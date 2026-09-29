@@ -2,7 +2,7 @@ name: Record page
 on:
   push:
     branches: [main]
-    paths: ["records/**", "scripts/site.py"]
+    paths: ["records/**", "scripts/records.py"]
   workflow_dispatch:
 # Build the record page from records/ and publish it to GitHub Pages; nothing is committed.
 permissions:
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --no-project --with pyyaml python scripts/site.py site
+      - run: uv run --no-project --with pyyaml python scripts/records.py site
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site

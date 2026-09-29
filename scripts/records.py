@@ -1,7 +1,7 @@
 """Build the record page from records/*/, or print the README's record table.
 
-python scripts/site.py DIR      # DIR/index.html and DIR/records.svg
-python scripts/site.py --table
+python scripts/records.py DIR      # DIR/index.html and DIR/records.svg
+python scripts/records.py --table
 """
 
 import html
@@ -201,17 +201,17 @@ def record_chart(entries, standalone=False) -> str:
         path += f" H{px:.1f} V{py:.1f}"
     path += f" H{width - right:.1f}"
     parts.append(f'<path class="line" d="{path}"/>')
-    for i, (folder, team, result) in enumerate(entries):
+    for i, (folder, _, result) in enumerate(entries):
         score = result["gift_eval"]
         px, py = points[i]
         spread = score["crps_sd"] * (height - top - bottom) / (hi - lo)
         parts.append(
-            f"<g><title>#{i + 1} {esc(team['team'])}: {score['crps']:.4f} ± "
+            f"<g><title>Record {i + 1}: {score['crps']:.4f} ± "
             f"{score['crps_sd']:.4f} over {score['runs']} runs</title>"
             f'<line class="bar" x1="{px:.1f}" x2="{px:.1f}" y1="{py - spread:.1f}" '
             f'y2="{py + spread:.1f}"/><circle class="dot" cx="{px:.1f}" cy="{py:.1f}" r="7"/>'
             f'<text class="plabel" x="{px + 12:.1f}" y="{py - 12:.1f}">#{i + 1} '
-            f"{esc(team['team'])} {score['crps']:.3f}</text></g>"
+            f"{score['crps']:.3f}</text></g>"
         )
         parts.append(
             f'<text class="tick" x="{px:.1f}" y="{height - bottom + 22}" '
