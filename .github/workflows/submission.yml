@@ -1,0 +1,17 @@
+name: Submission guard
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  guard:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: astral-sh/setup-uv@v6
+      - name: Check the changed files
+        run: |
+          git diff --name-only HEAD^1 HEAD > changed.txt
+          uv run --no-project --with pyyaml python -m scripts.submission guard $(cat changed.txt)

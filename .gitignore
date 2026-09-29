@@ -1,0 +1,42 @@
+# Environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.ipynb_checkpoints/
+.DS_Store
+
+# Credentials and personal tooling
+.env
+.env.*
+!.env.example
+
+.agents/
+.claude/
+.codex/
+
+# Runtime artifacts
+/data/
+/outputs/
+/runs/
+/output/
+/results/
+/checkpoints/
+/tmp/
+wandb/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.parquet
+*.arrow
+
+# A submission folder holds exactly these files.
+/submissions/*/*
+!/submissions/*/README.md
+!/submissions/*/result.json
+!/submissions/*/changes.diff
+
+external/
+dist/
+*.egg-info/

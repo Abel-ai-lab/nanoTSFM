@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nanotsfm"
+version = "0.1.0"
+description = "An educational time-series foundation-model challenge"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+license = "MIT"
+authors = [{name = "Hank Zhu"}]
+dependencies = [
+    "numpy>=2,<3",
+    "torch>=2.4,<3",
+    "pyyaml>=6,<7",
+    "datasets>=4,<6",
+    "pyarrow>=18",
+]
+
+[project.urls]
+Repository = "https://github.com/Abel-ai-lab/nanoTSFM"
+Dataset = "https://huggingface.co/datasets/abel-lab/nanoTSFM-pretrain"
+
+[project.optional-dependencies]
+cpu = ["torch>=2.4,<3"]
+cuda = ["torch>=2.4,<3"]
+gift = ["gluonts~=0.17.0", "pandas>=2,<3", "python-dotenv>=1,<2", "toolz>=0.12"]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6,<8",
+    "matplotlib>=3.8,<4",
+    "ruff>=0.11,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nanotsfm"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv]
+conflicts = [[{extra = "cpu"}, {extra = "cuda"}]]
+
+[tool.uv.sources]
+torch = [
+  {index = "pytorch-cpu", extra = "cpu"},
+  {index = "pytorch-cuda", extra = "cuda", marker = "sys_platform == 'linux'"},
+]

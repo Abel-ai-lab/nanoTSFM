@@ -1,0 +1,396 @@
+{
+  "name": "gift-eval-full",
+  "status": "project-evaluation",
+  "upstream_revision": "9a014e9e8ea130ba39c100c60d5dcbab7db57ac9",
+  "source": "https://github.com/SalesforceAIResearch/gift-eval/blob/9a014e9e8ea130ba39c100c60d5dcbab7db57ac9/notebooks/naive.ipynb",
+  "tasks": [
+    {
+      "dataset": "m4_yearly",
+      "term": "short"
+    },
+    {
+      "dataset": "m4_quarterly",
+      "term": "short"
+    },
+    {
+      "dataset": "m4_monthly",
+      "term": "short"
+    },
+    {
+      "dataset": "m4_weekly",
+      "term": "short"
+    },
+    {
+      "dataset": "m4_daily",
+      "term": "short"
+    },
+    {
+      "dataset": "m4_hourly",
+      "term": "short"
+    },
+    {
+      "dataset": "electricity/15T",
+      "term": "short"
+    },
+    {
+      "dataset": "electricity/15T",
+      "term": "medium"
+    },
+    {
+      "dataset": "electricity/15T",
+      "term": "long"
+    },
+    {
+      "dataset": "electricity/H",
+      "term": "short"
+    },
+    {
+      "dataset": "electricity/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "electricity/H",
+      "term": "long"
+    },
+    {
+      "dataset": "electricity/D",
+      "term": "short"
+    },
+    {
+      "dataset": "electricity/W",
+      "term": "short"
+    },
+    {
+      "dataset": "solar/10T",
+      "term": "short"
+    },
+    {
+      "dataset": "solar/10T",
+      "term": "medium"
+    },
+    {
+      "dataset": "solar/10T",
+      "term": "long"
+    },
+    {
+      "dataset": "solar/H",
+      "term": "short"
+    },
+    {
+      "dataset": "solar/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "solar/H",
+      "term": "long"
+    },
+    {
+      "dataset": "solar/D",
+      "term": "short"
+    },
+    {
+      "dataset": "solar/W",
+      "term": "short"
+    },
+    {
+      "dataset": "hospital",
+      "term": "short"
+    },
+    {
+      "dataset": "covid_deaths",
+      "term": "short"
+    },
+    {
+      "dataset": "us_births/D",
+      "term": "short"
+    },
+    {
+      "dataset": "us_births/M",
+      "term": "short"
+    },
+    {
+      "dataset": "us_births/W",
+      "term": "short"
+    },
+    {
+      "dataset": "saugeenday/D",
+      "term": "short"
+    },
+    {
+      "dataset": "saugeenday/M",
+      "term": "short"
+    },
+    {
+      "dataset": "saugeenday/W",
+      "term": "short"
+    },
+    {
+      "dataset": "temperature_rain_with_missing",
+      "term": "short"
+    },
+    {
+      "dataset": "kdd_cup_2018_with_missing/H",
+      "term": "short"
+    },
+    {
+      "dataset": "kdd_cup_2018_with_missing/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "kdd_cup_2018_with_missing/H",
+      "term": "long"
+    },
+    {
+      "dataset": "kdd_cup_2018_with_missing/D",
+      "term": "short"
+    },
+    {
+      "dataset": "car_parts_with_missing",
+      "term": "short"
+    },
+    {
+      "dataset": "restaurant",
+      "term": "short"
+    },
+    {
+      "dataset": "hierarchical_sales/D",
+      "term": "short"
+    },
+    {
+      "dataset": "hierarchical_sales/W",
+      "term": "short"
+    },
+    {
+      "dataset": "LOOP_SEATTLE/5T",
+      "term": "short"
+    },
+    {
+      "dataset": "LOOP_SEATTLE/5T",
+      "term": "medium"
+    },
+    {
+      "dataset": "LOOP_SEATTLE/5T",
+      "term": "long"
+    },
+    {
+      "dataset": "LOOP_SEATTLE/H",
+      "term": "short"
+    },
+    {
+      "dataset": "LOOP_SEATTLE/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "LOOP_SEATTLE/H",
+      "term": "long"
+    },
+    {
+      "dataset": "LOOP_SEATTLE/D",
+      "term": "short"
+    },
+    {
+      "dataset": "SZ_TAXI/15T",
+      "term": "short"
+    },
+    {
+      "dataset": "SZ_TAXI/15T",
+      "term": "medium"
+    },
+    {
+      "dataset": "SZ_TAXI/15T",
+      "term": "long"
+    },
+    {
+      "dataset": "SZ_TAXI/H",
+      "term": "short"
+    },
+    {
+      "dataset": "M_DENSE/H",
+      "term": "short"
+    },
+    {
+      "dataset": "M_DENSE/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "M_DENSE/H",
+      "term": "long"
+    },
+    {
+      "dataset": "M_DENSE/D",
+      "term": "short"
+    },
+    {
+      "dataset": "ett1/15T",
+      "term": "short"
+    },
+    {
+      "dataset": "ett1/15T",
+      "term": "medium"
+    },
+    {
+      "dataset": "ett1/15T",
+      "term": "long"
+    },
+    {
+      "dataset": "ett1/H",
+      "term": "short"
+    },
+    {
+      "dataset": "ett1/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "ett1/H",
+      "term": "long"
+    },
+    {
+      "dataset": "ett1/D",
+      "term": "short"
+    },
+    {
+      "dataset": "ett1/W",
+      "term": "short"
+    },
+    {
+      "dataset": "ett2/15T",
+      "term": "short"
+    },
+    {
+      "dataset": "ett2/15T",
+      "term": "medium"
+    },
+    {
+      "dataset": "ett2/15T",
+      "term": "long"
+    },
+    {
+      "dataset": "ett2/H",
+      "term": "short"
+    },
+    {
+      "dataset": "ett2/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "ett2/H",
+      "term": "long"
+    },
+    {
+      "dataset": "ett2/D",
+      "term": "short"
+    },
+    {
+      "dataset": "ett2/W",
+      "term": "short"
+    },
+    {
+      "dataset": "jena_weather/10T",
+      "term": "short"
+    },
+    {
+      "dataset": "jena_weather/10T",
+      "term": "medium"
+    },
+    {
+      "dataset": "jena_weather/10T",
+      "term": "long"
+    },
+    {
+      "dataset": "jena_weather/H",
+      "term": "short"
+    },
+    {
+      "dataset": "jena_weather/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "jena_weather/H",
+      "term": "long"
+    },
+    {
+      "dataset": "jena_weather/D",
+      "term": "short"
+    },
+    {
+      "dataset": "bitbrains_fast_storage/5T",
+      "term": "short"
+    },
+    {
+      "dataset": "bitbrains_fast_storage/5T",
+      "term": "medium"
+    },
+    {
+      "dataset": "bitbrains_fast_storage/5T",
+      "term": "long"
+    },
+    {
+      "dataset": "bitbrains_fast_storage/H",
+      "term": "short"
+    },
+    {
+      "dataset": "bitbrains_rnd/5T",
+      "term": "short"
+    },
+    {
+      "dataset": "bitbrains_rnd/5T",
+      "term": "medium"
+    },
+    {
+      "dataset": "bitbrains_rnd/5T",
+      "term": "long"
+    },
+    {
+      "dataset": "bitbrains_rnd/H",
+      "term": "short"
+    },
+    {
+      "dataset": "bizitobs_application",
+      "term": "short"
+    },
+    {
+      "dataset": "bizitobs_application",
+      "term": "medium"
+    },
+    {
+      "dataset": "bizitobs_application",
+      "term": "long"
+    },
+    {
+      "dataset": "bizitobs_service",
+      "term": "short"
+    },
+    {
+      "dataset": "bizitobs_service",
+      "term": "medium"
+    },
+    {
+      "dataset": "bizitobs_service",
+      "term": "long"
+    },
+    {
+      "dataset": "bizitobs_l2c/5T",
+      "term": "short"
+    },
+    {
+      "dataset": "bizitobs_l2c/5T",
+      "term": "medium"
+    },
+    {
+      "dataset": "bizitobs_l2c/5T",
+      "term": "long"
+    },
+    {
+      "dataset": "bizitobs_l2c/H",
+      "term": "short"
+    },
+    {
+      "dataset": "bizitobs_l2c/H",
+      "term": "medium"
+    },
+    {
+      "dataset": "bizitobs_l2c/H",
+      "term": "long"
+    }
+  ]
+}
