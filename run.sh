@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#: Usage: ./run.sh <command> [run] [config]
+#: Usage: ./run.sh <command> [run] [config] [seed]
 #:
 #:   setup    install the Python environment
 #:   toy      train a tiny model on toy data (CPU, about 15 seconds)
@@ -7,7 +7,8 @@
 #:   train    train a run and score it on GEP-Val (default config: configs/baseline.yaml)
 #:   test     score a run on GEP-Test
 #:   eval     score a run on GIFT-Eval
-#:   submit   package a run as submissions/<team>/: ./run.sh submit <run> <team>
+#:   submit   package three or more runs as records/<name>/: ./run.sh submit <name> <run>...
+#:   figure   draw the record history: ./run.sh figure [output.png]
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -40,8 +41,9 @@ data)
   py -m nanotsfm.data download
   ;;
 train)
-  name=${2:?Usage: ./run.sh train <run> [config]}
-  py -m nanotsfm.train --config "${3:-configs/baseline.yaml}" --output "$RUNS/$name"
+  name=${2:?Usage: ./run.sh train <run> [config] [seed]}
+  py -m nanotsfm.train --config "${3:-configs/baseline.yaml}" --output "$RUNS/$name" \
+    ${4:+--seed "$4"}
   py -m nanotsfm.evaluation gep --checkpoint "$RUNS/$name/checkpoint.pt" --split validation \
     --output "$RUNS/$name/gep-val.json" --device auto
   ;;
@@ -65,11 +67,14 @@ eval)
     --output "$RUNS/$name/gift.json" --device auto --workers "$workers"
   ;;
 submit)
-  name=${2:?Usage: ./run.sh submit <run> <team>}
-  team=${3:?Usage: ./run.sh submit <run> <team>}
-  need_run "$name"
-  py -m scripts.submission package "$RUNS/$name" "submissions/$team" "${@:4}"
-  py -m scripts.submission check "submissions/$team" --checkpoint "$RUNS/$name/checkpoint.pt"
+  name=${2:?Usage: ./run.sh submit <name> <run> <run> <run>...}
+  runs=()
+  for run in "${@:3}"; do need_run "$run"; runs+=("$RUNS/$run"); done
+  py -m scripts.submission package "records/$name" "${runs[@]}"
+  py -m scripts.submission check "records/$name" --runs "${runs[@]}"
+  ;;
+figure)
+  uv run --no-project --with matplotlib --with pyyaml python scripts/leaderboard.py "${2:-records.png}"
   ;;
 *)
   usage

@@ -9,14 +9,14 @@ meta:
 
 Every stage except evaluation is open. In the pilot, more steps and a bigger model improved GEP-Test
 but hurt GIFT-Eval, while data diversity, source weighting and longer context improved both. Numbers
-are relative CRPS (lower is better); the baseline scores 0.666 on GIFT-Eval and 0.618 on GEP-Test.
+are relative CRPS (lower is better); the baseline scores 0.670 on GIFT-Eval and 0.623 on GEP-Test.
 
 ## Data
 
 Data choices moved GIFT-Eval most and are the main defense against overfitting the corpus.
 
 - **Mixture:** sampling sources by the square root of their series count, in place of uniformly,
-  scored 0.644 at 5,000 steps (baseline 0.666). Per-frequency or per-domain balance is untested.
+  scored 0.644 at 5,000 steps against 0.665 for uniform sampling. Per-frequency or per-domain balance is untested.
 - **Size and diversity:** more series let longer training keep its transfer: at 20,000 steps,
   GEP-L scored 0.661 against 0.693 for GEP-M (see [data](data.md#training-slices)). The full
   corpus is 975 GB.
@@ -86,5 +86,5 @@ improved GEP-Test (0.618 to 0.581 at 40,000 steps) and worsened GIFT-Eval (0.666
 | 12.7M parameters | GEP-70M, 20,000 steps | 0.725 | 0.538 | 0.705, 0.579 at 3.3M |
 | Context 512 | GEP-70M, 20,000 steps | 0.712 | 0.634 | 0.705, 0.579 at 1,024 |
 
-Seed spread is about ±0.004 on GIFT-Eval and ±0.006 on GEP-Test. GEP-70M and GEP-500M were pilot
+Seed spread in the pilot was about ±0.004 on GIFT-Eval and ±0.006 on GEP-Test. GEP-70M and GEP-500M were pilot
 slices; the dataset's `build/build.py` rebuilds them.

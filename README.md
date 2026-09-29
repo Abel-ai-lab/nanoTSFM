@@ -21,7 +21,7 @@ git clone https://github.com/Abel-ai-lab/nanoTSFM && cd nanoTSFM
 ./run.sh setup           # Python environment
 ./run.sh data            # GEP-M and the diagnostics from Hugging Face, 730 MB
 ./run.sh train baseline  # 2 minutes on an A100
-./run.sh eval baseline   # GIFT-Eval score, about 4 minutes
+./run.sh eval baseline   # GIFT-Eval score, about 5 minutes
 ```
 
 `./run.sh toy` trains a tiny model on toy data in about 15 seconds on a CPU, to check the setup.
@@ -30,7 +30,7 @@ forecasting and diagnostics. `./run.sh` lists every command.
 
 ## Goal
 
-Lower the baseline's GIFT-Eval score with at most one hour of training on one A100 80GB.
+Set the world record on GIFT-Eval with at most one hour of training on one A100 80GB.
 
 - **Score:** GIFT-Eval relative CRPS over 97 tasks from 23 datasets the model never trains on,
   relative to Seasonal Naive and averaged geometrically. Lower is better; 1 matches Seasonal Naive.
@@ -41,19 +41,19 @@ GEP-Val and GEP-Test, held-out series from the training corpus, are 20-second di
 improve but GIFT-Eval does not, the model is fitting its corpus rather than learning to forecast.
 The [rules](docs/rules.md) have the details.
 
-## Leaderboard
+## World record
 
-![GIFT-Eval score against model size](docs/leaderboard.png)
+| # | GIFT-Eval CRPS | Description | Date | Record | Contributors |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | 0.6699 ± 0.0073 | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
-Better models sit higher and further left. Orange points are verified [submissions](submissions/),
-blue points are published models from the GIFT-Eval leaderboard, the dashed line is the Pareto
-frontier, and dotted lines are Seasonal Naive and AutoARIMA. A submission appears once maintainers
-have retrained it and recorded the score in [`docs/leaderboard.csv`](docs/leaderboard.csv).
+![GIFT-Eval record history](https://abel-ai-lab.github.io/nanoTSFM/records.png)
 
-The [baseline](submissions/baseline/) scores 0.666 ± 0.004 CRPS and 0.958 MASE over three seeds
-(the figure shows its submitted seed), about 113th of 131 leaderboard models. Toto-2.0-4m, the same
-design trained far longer on far more data, shows the headroom. To submit, see
-[contributing](CONTRIBUTING.md).
+Each record is the mean ± sd of three or more verified runs. A new record must beat the last by
+more than seed noise; the [submission](docs/submission.md) page has the rule and the steps, and
+[`records/`](records/) has every record's report. Dotted lines mark published models on the
+GIFT-Eval leaderboard, including Toto-2.0-4m, the same design trained far longer on far more data.
+The baseline sits about 114th of the leaderboard's 131 models.
 
 ## Data
 
@@ -79,7 +79,7 @@ The baseline on one A100 80GB with 8 CPU cores:
 | `./run.sh data` | 1 min, 730 MB |
 | `./run.sh train baseline` | 2.5 min: 110 s of training (5,000 steps, 3.4 GB of GPU memory), then GEP-Val |
 | `./run.sh test baseline` | 30 s |
-| `./run.sh eval baseline` | 4 min, plus a one-time 1 GB download |
+| `./run.sh eval baseline` | 5 min, plus a one-time 1 GB download |
 
 ## Settings
 
@@ -101,8 +101,8 @@ Nothing needs configuring. To change a default, copy [`.env.example`](.env.examp
 | `src/nanotsfm/evaluation.py` | GIFT-Eval and GEP scoring (fixed) |
 | `run.sh` | Every command |
 | `configs/` | Training configurations and the GIFT-Eval task list |
-| `scripts/` | The submission check and the leaderboard figure |
-| `submissions/` | Submissions, with a template |
+| `scripts/` | The submission tools and the record figure |
+| `records/` | Every record's report and results, with a template |
 
 The model reads history `[B,V,C]` and series IDs `[B,V]` (equal IDs mark related variates; NaN
 marks missing values) and returns nine quantiles `[B,V,H,9]` in original units.
@@ -112,7 +112,7 @@ marks missing values) and returns nine quantiles `[B,V,H,9]` in original units.
 - [Rules](docs/rules.md): score, budget, data, diagnostics.
 - [Data](docs/data.md): corpus, split, GEP datasets.
 - [Directions](docs/directions.md): improvement ideas by pipeline stage, with pilot results.
-- [Submission](docs/submission.md): packaging a result, and how maintainers review it.
+- [Submission](docs/submission.md): attempting the record, and how maintainers verify it.
 - [Contributing](CONTRIBUTING.md): pull request rules.
 - [Course](docs/course.md): schedule, final evaluation, awards.
 - [To do](docs/todo.md): open work.

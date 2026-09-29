@@ -425,7 +425,7 @@ def run(
     if len({(t["dataset"], t["term"]) for t in tasks}) != TASK_COUNT:
         raise ValueError(f"The task manifest must hold {TASK_COUNT} distinct tasks")
     _, saved = load_checkpoint(checkpoint)
-    data = saved.get("data") or {"kind": saved.get("data_kind")}  # older checkpoints
+    data = saved["data"]
     if data["kind"] == "toy" and not allow_toy:
         raise ValueError("Toy-data checkpoints require --allow-toy and cannot receive a score")
     rows = []

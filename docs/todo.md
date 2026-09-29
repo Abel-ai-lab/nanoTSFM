@@ -11,18 +11,24 @@ Open work, most useful first.
 
 ## Launch
 
-- [ ] Make the repository public.
-- [ ] Protect `main` with a ruleset (pull requests, no force-push), and let the leaderboard push its
-  figure: an org GitHub App with Contents write access, on the ruleset's bypass list, with its
-  client ID in the `LEADERBOARD_CLIENT_ID` variable and its private key in the
-  `LEADERBOARD_APP_KEY` secret.
-- [ ] Make an example submission from a personal fork with one real change, to walk the whole flow:
-  pull request, guard, `verify` and the leaderboard.
+- [ ] Enable GitHub Pages with GitHub Actions as its source, so the record figure publishes.
+- [ ] Protect `main` with a ruleset: pull requests only, no force-push, and merge commits only, since
+  a squash would drop a record's training commit from `main`.
 - [ ] Fill in the [course](course.md) page's *TBA* items: the submission deadline and the internship
   partner and terms.
 - [ ] Test the Runpod credit code end to end, and give participants a one-step way to run nanoTSFM
   on a pod: a Runpod template that clones the repository and runs `./run.sh setup`, or a short
   "Run on Runpod" guide.
+
+## Rules
+
+Open questions that [modded-nanogpt](https://github.com/KellerJordan/modded-nanogpt) answers for
+its own record.
+
+- [ ] Keep notable attempts that break a rule or miss the record in a separate list, so good ideas
+  are not lost.
+- [ ] Record rulings on edge cases in one place, a FAQ in the [rules](rules.md).
+- [ ] Announce each record in a short post that credits its contributors.
 
 ## Data
 
@@ -46,5 +52,5 @@ Open work, most useful first.
 ## Background
 
 The numbers in these pages come from about 50 pilot runs on A100 80GB GPUs in September 2026:
-5,000–40,000 steps, six data slices (three now published), contexts of 512–2,048, 3.3M and 12.7M
+5,000–40,000 steps, six data slices (GEP-S, GEP-M and GEP-L among them), contexts of 512–2,048, 3.3M and 12.7M
 parameters and three sampling schemes, each scored on GIFT-Eval, GEP-Val and GEP-Test.

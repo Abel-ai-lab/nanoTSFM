@@ -1,0 +1,29 @@
+name: Record figure
+on:
+  push:
+    branches: [main]
+    paths: ["records/**", "scripts/leaderboard.py"]
+  workflow_dispatch:
+# Publish to GitHub Pages rather than commit, so a protected main needs no bypass.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  figure:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --no-project --with matplotlib --with pyyaml python scripts/leaderboard.py site/records.png
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5

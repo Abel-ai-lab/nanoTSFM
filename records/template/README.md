@@ -1,11 +1,11 @@
 ---
 team: YOUR_TEAM
+description: YOUR_CHANGE  # the change in a few words, for the record table
 members:
   - name: YOUR_NAME
-    email: YOUR_EMAIL
+    github: YOUR_GITHUB
   - name: YOUR_PARTNER_NAME  # delete this member if you work alone
-    email: YOUR_PARTNER_EMAIL
-repository: https://github.com/YOUR_ACCOUNT/YOUR_REPO
+    github: YOUR_PARTNER_GITHUB
 ai_disclosure: YOUR_AI_USE  # any AI assistance and how you checked it, or none
 ---
 
@@ -16,7 +16,7 @@ About four pages. Every number should come from a run.
 ## Hypothesis
 
 What did you change, why should it lower GIFT-Eval within the one-hour budget, and what does your
-ablation test?
+ablation test? Name the record you built on.
 
 ## Method
 
@@ -25,9 +25,9 @@ Explain how you chose your final model and which scores you looked at.
 
 ## Results
 
-A table of the baseline, your change and the ablation: GIFT-Eval (mean and spread over three seeds),
-GEP-Val or GEP-Test, training seconds, and steps. Where the two disagree, say what you think fits the
-corpus without transferring.
+A table of the record you built on, your change and the ablation: GIFT-Eval (mean and spread over
+every seed you ran), GEP-Val or GEP-Test, training seconds, and steps. Where the two disagree, say
+what you think fits the corpus without transferring.
 
 ## Discussion
 
