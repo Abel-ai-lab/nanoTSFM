@@ -348,7 +348,7 @@ def verify(folder: Path, output: Path, device="auto", official=UPSTREAM, only=()
     if not other:
         return verdict
     name, best = other
-    verdict.update(record=name, **compare(verified, best))
+    verdict.update(record=name, **compare(verified, best["gift_eval"]))
     ancestor = ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", best["commit"], "HEAD"]
     if verdict["beats"] and subprocess.run(ancestor).returncode:
         raise ValueError(f"A record must build on the current one; merge {best['commit']}")
