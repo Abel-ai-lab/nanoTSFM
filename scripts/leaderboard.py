@@ -22,7 +22,7 @@ def load() -> list[tuple[str, dict, dict]]:
         if folder.is_dir() and folder.name != "template":
             team = yaml.safe_load((folder / "README.md").read_text().split("---\n", 2)[1])
             out.append((folder.name, team, json.loads((folder / "result.json").read_text())))
-    return out
+    return sorted(out, key=lambda entry: -entry[2]["gift_eval"]["crps"])  # each record improves
 
 
 def table(entries) -> str:
