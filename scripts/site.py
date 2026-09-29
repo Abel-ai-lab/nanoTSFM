@@ -25,7 +25,7 @@ MILESTONES = [
 ]
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600"
-    "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+    "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,600&display=swap"
 )
 STYLE = """
 :root {
@@ -59,14 +59,7 @@ h2 { font-size: 22px; font-weight: 600; }
   font-variant-numeric: tabular-nums; }
 nav { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline;
   justify-content: space-between; }
-/* The name as a series: "nano" observed on a solid line, "TSFM" forecast on a dashed one. */
-.wm { display: inline-flex; align-items: baseline; font-size: 22px; line-height: 1.2;
-  text-decoration: none; }
-.wm i, .wm b { padding-bottom: 4px; background: left bottom / 100% 2px no-repeat; }
-.wm i { font: italic 400 1em "IBM Plex Sans", Arial, sans-serif; color: var(--muted);
-  padding-right: 2px; background-image: linear-gradient(var(--muted), var(--muted)); }
-.wm b { font: 600 1em "IBM Plex Mono", Menlo, monospace; color: var(--ink); letter-spacing: -0.03em;
-  background-image: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 10px); }
+.wm { font: 600 22px "IBM Plex Sans", Arial, sans-serif; color: var(--ink); text-decoration: none; }
 .wm.small { font-size: 1em; }
 nav .links { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; }
 .eyebrow { font: 500 13px "IBM Plex Mono", Menlo, monospace; letter-spacing: 0.12em;
@@ -367,7 +360,7 @@ most one hour of training on one A100.">
 </head>
 <body>
 <main>
-<nav><a class="wm" href="{REPO}" aria-label="nanoTSFM on GitHub"><i>nano</i><b>TSFM</b></a>
+<nav><a class="wm" href="{REPO}" aria-label="nanoTSFM on GitHub"><i>nano</i>TSFM</a>
 <span class="links"><a href="{REPO}/blob/main/docs/rules.md">Rules</a>
 <a href="{REPO}/blob/main/docs/submission.md">Submit a result</a>
 <a href="{REPO}">GitHub</a></span></nav>
@@ -389,7 +382,7 @@ the mean of three or more verified runs.</p>
 <tr><th>#</th><th>GIFT-Eval CRPS</th><th>MASE</th><th>Runs</th><th>Change</th><th>Date</th>
 <th>Contributors</th></tr>{table}</table></div></section>
 <section><h2>Each record</h2>{details}</section>
-<footer><span class="wm small"><i>nano</i><b>TSFM</b></span> · built from
+<footer><span class="wm small"><i>nano</i>TSFM</span> · built from
 <a href="{REPO}/tree/main/records">records/</a> at
 <span class="mono">{esc(built[:7])}</span>. A new record must beat the last by more than seed
 noise; <a href="{REPO}/blob/main/docs/submission.md">here is how to submit</a>.</footer>
