@@ -1,5 +1,7 @@
-name: Record guard
-on: pull_request
+name: Pull request checks
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 permissions:
   contents: read
 jobs:
@@ -16,3 +18,23 @@ jobs:
         run: |
           git diff --name-only HEAD^1 HEAD > changed.txt
           uv run --no-project --with pyyaml python -m scripts.submission guard $(cat changed.txt)
+  training:
+    # A change to nanoTSFM leaves training alone, so main keeps training the current record.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'changes training') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check that training files are unchanged
+        run: |
+          if git diff --name-only HEAD^1 HEAD | grep -q '^records/[^/]*/result\.json$'; then
+            echo "A submission: the guard checks it."
+            exit 0
+          fi
+          changed=$(git diff --name-only HEAD^1 HEAD -- src configs pyproject.toml uv.lock)
+          if [ -n "$changed" ]; then
+            echo "::error::This pull request changes training files: $(echo $changed). See CONTRIBUTING.md."
+            exit 1
+          fi
+          echo "Training files are unchanged."

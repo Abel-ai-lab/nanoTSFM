@@ -60,6 +60,13 @@ is the challenge.
 
 Everything else is yours to change.
 
+## Versions
+
+nanoTSFM is released in versions, starting with v1.0.0. The score, these rules and the training code
+change only in a new version: a new major version when the score or rules change, and a new minor
+version when training code or dependencies change. The current record is re-verified at each new
+version. [Contributing](../CONTRIBUTING.md#versions) has the details.
+
 ## Open source
 
 Your fork must be public, and the runs' commit must be pushed. Submissions arrive as pull requests;
