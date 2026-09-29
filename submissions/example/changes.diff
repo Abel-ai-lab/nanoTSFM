@@ -1,0 +1,134 @@
+diff --git a/configs/baseline.yaml b/configs/baseline.yaml
+index 7980d98..d76f9b4 100644
+--- a/configs/baseline.yaml
++++ b/configs/baseline.yaml
+@@ -15,3 +15,4 @@ training:
+   device: auto
+   max_seconds: 3600
+   checkpoint_every: 1000
++  source_power: 0
+diff --git a/configs/mixture.yaml b/configs/mixture.yaml
+new file mode 100644
+index 0000000..e282f1f
+--- /dev/null
++++ b/configs/mixture.yaml
+@@ -0,0 +1,18 @@
++model:
++  context_length: 1024
++  prediction_length: 512
++  patch_length: 32
++  width: 256
++  layers: 3
++  heads: 4
++  dropout: 0.0
++training:
++  data: GEP-M
++  steps: 5000
++  batch_size: 256
++  learning_rate: 0.001
++  seed: 7
++  device: auto
++  max_seconds: 3600
++  checkpoint_every: 1000
++  source_power: 0.5
+diff --git a/configs/series.yaml b/configs/series.yaml
+new file mode 100644
+index 0000000..3bd07ae
+--- /dev/null
++++ b/configs/series.yaml
+@@ -0,0 +1,18 @@
++model:
++  context_length: 1024
++  prediction_length: 512
++  patch_length: 32
++  width: 256
++  layers: 3
++  heads: 4
++  dropout: 0.0
++training:
++  data: GEP-M
++  steps: 5000
++  batch_size: 256
++  learning_rate: 0.001
++  seed: 7
++  device: auto
++  max_seconds: 3600
++  checkpoint_every: 1000
++  source_power: 1
+diff --git a/configs/toy.yaml b/configs/toy.yaml
+index 7b4a052..0c14d2b 100644
+--- a/configs/toy.yaml
++++ b/configs/toy.yaml
+@@ -15,3 +15,4 @@ training:
+   device: cpu
+   max_seconds: 120
+   checkpoint_every: 4
++  source_power: 0
+diff --git a/src/nanotsfm/data.py b/src/nanotsfm/data.py
+index 588ee1b..a716633 100644
+--- a/src/nanotsfm/data.py
++++ b/src/nanotsfm/data.py
+@@ -95,7 +95,11 @@ def toy(split: str, seed: int = 7, series: int = 24, length: int = 512):
+ 
+ 
+ class Windows(Dataset):
+-    def __init__(self, dataset, context: int, horizon: int, count: int, seed: int):
++    def __init__(self, dataset, context: int, horizon: int, count: int, seed: int, power=0.0):
++        """Draw a source with weight (its series count) ** power, then a series from it.
++
++        Power 0 weights sources equally, 1 weights every series equally.
++        """
+         self.context, self.horizon, self.count, self.seed = context, horizon, count, seed
+         sources = {}
+         for source, values in zip(dataset["source"], arrays(dataset), strict=True):
+@@ -104,6 +108,8 @@ class Windows(Dataset):
+         self.sources = list(sources.values())
+         if not self.sources or min(context, horizon, count) <= 0:
+             raise ValueError("No series longer than the horizon, or an invalid window/count")
++        weights = np.array([len(source) for source in self.sources], dtype=float) ** power
++        self.weights = weights / weights.sum() if power else None
+ 
+     def __len__(self):
+         return self.count
+@@ -111,7 +117,10 @@ class Windows(Dataset):
+     def __getitem__(self, index):
+         rng = np.random.default_rng(np.random.SeedSequence([self.seed, int(index)]))
+         for _ in range(100):
+-            source = self.sources[rng.integers(len(self.sources))]
++            if self.weights is None:  # the baseline's uniform draw, kept for exact reproduction
++                source = self.sources[rng.integers(len(self.sources))]
++            else:
++                source = self.sources[rng.choice(len(self.sources), p=self.weights)]
+             group = source[rng.integers(len(source))]
+             channels = np.sort(
+                 rng.choice(
+diff --git a/src/nanotsfm/train.py b/src/nanotsfm/train.py
+index 5af36d4..455a9c4 100644
+--- a/src/nanotsfm/train.py
++++ b/src/nanotsfm/train.py
+@@ -43,6 +43,7 @@ def load_config(path: Path):
+         "device",
+         "max_seconds",
+         "checkpoint_every",
++        "source_power",
+     }
+     if set(settings) != required:
+         raise ValueError(f"Training fields must be exactly {sorted(required)}")
+@@ -54,6 +55,9 @@ def load_config(path: Path):
+             raise ValueError(f"{key} must be finite and positive")
+     if not isinstance(settings["seed"], int) or settings["seed"] < 0:
+         raise ValueError("seed must be a nonnegative integer")
++    power = settings["source_power"]
++    if isinstance(power, bool) or not isinstance(power, (int, float)) or not 0 <= power <= 1:
++        raise ValueError("source_power must be a number from 0 to 1")
+     if not isinstance(settings["data"], str) or not settings["data"]:
+         raise ValueError("data must name a dataset config or a local parquet folder")
+     return model, settings
+@@ -219,6 +223,7 @@ def train(config_path: Path, output: Path, resume: Path | None = None, data: str
+         1,
+         settings["steps"] * batch_size,
+         settings["seed"],
++        settings["source_power"],
+     )
+     loader = DataLoader(
+         Subset(windows, range(first_step * batch_size, len(windows))),
