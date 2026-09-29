@@ -23,7 +23,7 @@ __pycache__/
 /results/
 /checkpoints/
 /tmp/
-/records.png
+/site/
 wandb/
 *.pt
 *.pth

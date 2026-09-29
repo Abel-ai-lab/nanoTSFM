@@ -12,15 +12,15 @@ does. An attempt is a pull request that brings your code and a record folder. If
 beat the record, it is merged and `main` becomes the new record; otherwise it is closed with its
 verified score.
 
-The commit history holds every record's code, so `git checkout <commit>` reproduces any of them, and
-you may start from any commit you like. [`records/`](../records/) has each record's report and
-results.
+Each record's `result.json` names the commit its runs trained at, and the pull request keeps that
+commit, so any record can be reproduced and you may start from any of them.
+[The record page](https://abel-ai-lab.github.io/nanoTSFM/) shows every record with its runs, and
+[`records/`](../records/) has the reports.
 
 ## What an attempt holds
 
-- **Your code**, as commits on a branch of your fork. To claim the record, train your final runs on
-  top of the current record (merge `main` first), so that the code that merges is the code that
-  trained.
+- **Your code**, as commits on a branch of your fork. Merge `main` before your final runs, so that
+  after the merge `main` trains exactly what your runs trained; the guard checks this.
 - **Three or more runs** of your final configuration, with different seeds and at one commit.
   Report every run of that configuration, not the best ones.
 - **A record folder**, `records/<date>_<name>/`:
@@ -47,7 +47,7 @@ results.
    ```
 
    `submit` writes `result.json`, checks each checkpoint and compares the runs with the record.
-3. If they beat it, add your row to the README's table: `./run.sh figure --table` prints it.
+3. If they beat it, add your row to the README's table: `./run.sh table` prints it.
 4. Commit the folder, push, and open a pull request from your branch to nanoTSFM's `main`. Its
    template asks for what changed and why, your results beside the record, an ablation, and how to
    reproduce.
@@ -66,26 +66,24 @@ runs lower it.
 ## Checks
 
 - On every pull request from a fork, a guard checks that fixed files are untouched, no file is
-  over 1 MB, the record folder is well formed, and every changed code file matches the runs'
-  commit. It also says whether the runs claim the record.
+  over 1 MB, the record folder is well formed, and after the merge the training code (`src/`,
+  `configs/`, `pyproject.toml` and `uv.lock`) is identical to the runs' commit. It also says
+  whether the runs claim the record.
 - `./run.sh submit` also checks your local checkpoints: their SHA-256, steps and training time match
   `result.json`, and each returns finite, ordered quantiles through the forecast interface.
 
 ## Review
 
-Maintainers read the code and the report, then retrain every run at its commit with the official
-fixed files, so your code trains and the official code scores:
+Maintainers read the code and the report, then retrain every run from the pull request with the
+official fixed files, so your code trains and the official code scores:
 
 ```shell
-git clone https://github.com/Abel-ai-lab/nanoTSFM review && cd review
-git fetch origin pull/<number>/head && git checkout <commit from result.json>
+gh repo clone Abel-ai-lab/nanoTSFM review && cd review && gh pr checkout <number>
 git checkout origin/main -- src/nanotsfm/evaluation.py configs/gift-full.json scripts/submission.py
-git checkout FETCH_HEAD -- records/<folder>
 uv run --extra gift python -m scripts.submission verify records/<folder> --output verify
 ```
 
 `verify` retrains each run, requires it to finish within the cap and to score within 0.01 of its
 report, and compares the verified mean with the record. It skips runs already verified in its
 output folder, so `--runs` can split the work across jobs; three full-hour runs take about 3.5
-A100-hours. A record is merged with a merge commit, which keeps the runs' commit in `main`'s
-history, and the record figure then updates itself.
+A100-hours. A record is merged, squashed or not, and the record page updates itself.

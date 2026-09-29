@@ -47,9 +47,10 @@ The [rules](docs/rules.md) have the details.
 | ---: | --- | --- | --- | --- | --- |
 | 1 | 0.6699 ± 0.0073 | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
-![GIFT-Eval record history](https://abel-ai-lab.github.io/nanoTSFM/records.png)
+[![GIFT-Eval record history](https://abel-ai-lab.github.io/nanoTSFM/records.png)](https://abel-ai-lab.github.io/nanoTSFM/)
 
-Each record is the mean ± sd of three or more verified runs. A new record must beat the last by
+Each record is the mean ± sd of three or more verified runs; [the record page](https://abel-ai-lab.github.io/nanoTSFM/)
+shows every run. A new record must beat the last by
 more than seed noise; the [submission](docs/submission.md) page has the rule and the steps, and
 [`records/`](records/) has every record's report. Dotted lines mark published models on the
 GIFT-Eval leaderboard, including Toto-2.0-4m, the same design trained far longer on far more data.

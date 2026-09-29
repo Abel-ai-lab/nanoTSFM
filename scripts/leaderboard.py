@@ -1,4 +1,4 @@
-"""Draw the record history from records/*/, or print the README's record table with --table."""
+"""Load records/*/, draw the record history, or print the README's record table (--table)."""
 
 import json
 import sys

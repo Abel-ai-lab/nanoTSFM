@@ -8,7 +8,8 @@
 #:   test     score a run on GEP-Test
 #:   eval     score a run on GIFT-Eval
 #:   submit   package three or more runs as records/<name>/: ./run.sh submit <name> <run>...
-#:   figure   draw the record history: ./run.sh figure [output.png]
+#:   table    print the README's record table
+#:   site     build the record page into site/
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -73,8 +74,11 @@ submit)
   py -m scripts.submission package "records/$name" "${runs[@]}"
   py -m scripts.submission check "records/$name" --runs "${runs[@]}"
   ;;
-figure)
-  uv run --no-project --with matplotlib --with pyyaml python scripts/leaderboard.py "${2:-records.png}"
+table)
+  uv run --no-project --with pyyaml python scripts/leaderboard.py --table
+  ;;
+site)
+  uv run --no-project --with matplotlib --with pyyaml python scripts/site.py site
   ;;
 *)
   usage

@@ -1,10 +1,10 @@
-name: Record figure
+name: Record page
 on:
   push:
     branches: [main]
-    paths: ["records/**", "scripts/leaderboard.py"]
+    paths: ["records/**", "scripts/leaderboard.py", "scripts/site.py"]
   workflow_dispatch:
-# Publish to GitHub Pages rather than commit, so a protected main needs no bypass.
+# Build the record page from records/ and publish it to GitHub Pages; nothing is committed.
 permissions:
   contents: read
   pages: write
@@ -13,7 +13,7 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
-  figure:
+  page:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv run --no-project --with matplotlib --with pyyaml python scripts/leaderboard.py site/records.png
+      - run: uv run --no-project --with matplotlib --with pyyaml python scripts/site.py site
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site

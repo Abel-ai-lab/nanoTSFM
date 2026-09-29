@@ -21,8 +21,8 @@ Title an attempt "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
 
 **Reproduce:** `./run.sh train <run> <config> <seed>` for each seed, and any data command.
 
-- [ ] Every run of the final configuration is in `result.json`, trained at one pushed commit on
-      top of the current record.
+- [ ] Every run of the final configuration is in `result.json`, trained at one pushed commit
+      after merging `main`.
 - [ ] `./run.sh submit` passed and says whether the runs beat the record; if they do, the README's
       record table has my row.
 - [ ] My fork is public.

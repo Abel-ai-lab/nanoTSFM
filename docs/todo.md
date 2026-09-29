@@ -11,9 +11,7 @@ Open work, most useful first.
 
 ## Launch
 
-- [ ] Enable GitHub Pages with GitHub Actions as its source, so the record figure publishes.
-- [ ] Protect `main` with a ruleset: pull requests only, no force-push, and merge commits only, since
-  a squash would drop a record's training commit from `main`.
+- [ ] Protect `main` with a ruleset: pull requests only, no force-push.
 - [ ] Fill in the [course](course.md) page's *TBA* items: the submission deadline and the internship
   partner and terms.
 - [ ] Test the Runpod credit code end to end, and give participants a one-step way to run nanoTSFM

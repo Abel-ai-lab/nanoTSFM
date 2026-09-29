@@ -28,6 +28,15 @@ ROOT = Path(__file__).resolve().parents[1]
 RECORDS = "records"
 FROZEN = "src/nanotsfm/evaluation.py"
 FIXED = (FROZEN, "configs/gift-full.json", "scripts/submission.py", ".github/")
+# What decides training; the fixed evaluation files do not.
+TRAINING = (
+    "src",
+    "configs",
+    "pyproject.toml",
+    "uv.lock",
+    f":!{FROZEN}",
+    ":!configs/gift-full.json",
+)
 UPSTREAM = "https://github.com/Abel-ai-lab/nanoTSFM"
 FILES = ("README.md", "result.json")
 TEAM_FIELDS = ("team", "description", "members", "ai_disclosure")
@@ -101,6 +110,16 @@ def frozen_sha256(base: str) -> str:
         ).hexdigest()
     except subprocess.CalledProcessError as error:
         raise ValueError(f"Base commit {base} is not here; fetch {UPSTREAM} main") from error
+
+
+def check_training(commit: str):
+    """Require the work tree to train exactly what the runs' commit trained."""
+    exists = ["git", "-C", str(ROOT), "cat-file", "-e", f"{commit}^{{commit}}"]
+    if subprocess.run(exists, stderr=subprocess.DEVNULL).returncode:
+        raise ValueError(f"The runs' commit {commit} is not here; push it with your branch")
+    diff = ["git", "-C", str(ROOT), "diff", "--quiet", commit, "--", *TRAINING]
+    if subprocess.run(diff).returncode:
+        raise ValueError(f"The training code differs from the runs' commit {commit[:7]}")
 
 
 def summarize(scores: list[dict]) -> dict:
@@ -305,9 +324,7 @@ def verify(folder: Path, output: Path, device="auto", official=UPSTREAM, only=()
     git("fetch", "--quiet", official, "main")
     check(folder)
     result = json.loads((folder / "result.json").read_text())
-    head = git("rev-parse", "HEAD").strip()
-    if head != result["commit"]:
-        raise ValueError(f"Check out the runs' commit {result['commit']}, not {head}")
+    check_training(result["commit"])
     if result["data"]["kind"] == "custom":
         print("Custom data: build it with the command in the report before verifying.")
     output.mkdir(parents=True, exist_ok=True)
@@ -351,9 +368,6 @@ def verify(folder: Path, output: Path, device="auto", official=UPSTREAM, only=()
         return verdict
     name, best = other
     verdict.update(record=name, **compare(verified, best["gift_eval"]))
-    ancestor = ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", best["commit"], "HEAD"]
-    if verdict["beats"] and subprocess.run(ancestor).returncode:
-        raise ValueError(f"A record must build on the current one; merge {best['commit']}")
     return verdict
 
 
@@ -376,18 +390,7 @@ def guard(changed: list[str]) -> str:
     check_team(front_matter(folder / "README.md"), folder / "README.md")
     result = json.loads((folder / "result.json").read_text())
     check_result(result)
-    # The code that merges must be the code that trained: compare with the runs' commit.
-    for changed_path in changed:
-        if changed_path.startswith(f"{RECORDS}/{name}/") or changed_path == "README.md":
-            continue
-        trained = subprocess.run(
-            ["git", "-C", str(ROOT), "show", f"{result['commit']}:{changed_path}"],
-            capture_output=True,
-        )
-        path = ROOT / changed_path
-        now = path.read_bytes() if path.exists() else None
-        if (trained.stdout if trained.returncode == 0 else None) != now:
-            raise ValueError(f"{changed_path} differs from the runs' commit; train at your head")
+    check_training(result["commit"])  # after the merge, main trains what the runs trained
     other = current_record(folder)
     if not other:
         return f"{RECORDS}/{name}/ is well formed; a maintainer verifies it by retraining."
