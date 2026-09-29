@@ -75,10 +75,10 @@ submit)
   py -m scripts.submission check "records/$name" --runs "${runs[@]}"
   ;;
 table)
-  uv run --no-project --with pyyaml python scripts/leaderboard.py --table
+  uv run --no-project --with pyyaml python scripts/site.py --table
   ;;
 site)
-  uv run --no-project --with matplotlib --with pyyaml python scripts/site.py site
+  uv run --no-project --with pyyaml python scripts/site.py site
   ;;
 *)
   usage

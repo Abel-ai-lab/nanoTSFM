@@ -1,17 +1,31 @@
-"""Build the record page, index.html and records.png, from records/*/: python scripts/site.py DIR"""
+"""Build the record page from records/*/, or print the README's record table.
+
+python scripts/site.py DIR      # DIR/index.html and DIR/records.svg
+python scripts/site.py --table
+"""
 
 import html
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-from leaderboard import MILESTONES, figure, load
+import yaml
 
+ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
+SITE = "https://abel-ai-lab.github.io/nanoTSFM/"
+# GIFT-Eval leaderboard at gift-eval commit 9a014e9: zero-shot models without test leakage.
+MILESTONES = [
+    ("TimesFM-3", 0.456),
+    ("Toto-2.0-4m", 0.524),
+    ("TinyCast", 0.545),
+    ("Moirai-small", 0.650),
+]
 FONTS = (
-    "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
-    "&family=IBM+Plex+Sans:wght@400;600;700&display=swap"
+    "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600"
+    "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap"
 )
 STYLE = """
 :root {
@@ -45,7 +59,15 @@ h2 { font-size: 22px; font-weight: 600; }
   font-variant-numeric: tabular-nums; }
 nav { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline;
   justify-content: space-between; }
-nav .name { font-weight: 700; color: var(--ink); font-size: 18px; text-decoration: none; }
+/* The name as a series: "nano" observed on a solid line, "TSFM" forecast on a dashed one. */
+.wm { display: inline-flex; align-items: baseline; font-size: 22px; line-height: 1.2;
+  text-decoration: none; }
+.wm i, .wm b { padding-bottom: 4px; background: left bottom / 100% 2px no-repeat; }
+.wm i { font: italic 400 1em "IBM Plex Sans", Arial, sans-serif; color: var(--muted);
+  padding-right: 2px; background-image: linear-gradient(var(--muted), var(--muted)); }
+.wm b { font: 600 1em "IBM Plex Mono", Menlo, monospace; color: var(--ink); letter-spacing: -0.03em;
+  background-image: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 10px); }
+.wm.small { font-size: 1em; }
 nav .links { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; }
 .eyebrow { font: 500 13px "IBM Plex Mono", Menlo, monospace; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--muted); margin: 0; }
@@ -104,6 +126,39 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule)
 @keyframes open { from { opacity: 0.4; } to { opacity: 1; } }
 """
 SEEDS = ["var(--accent)", "var(--good)", "var(--milestone)", "var(--ink)"]
+# The README shows the chart as an image, outside the page's styles.
+CHART_STYLE = """<style>
+.grid { stroke: #D5DAD3; } .milestone { stroke: #8C99A6; stroke-dasharray: 2 5; stroke-width: 1.5; }
+.tick, .axis { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
+.mlabel { fill: #8C99A6; font: 12px Arial, sans-serif; }
+.line { fill: none; stroke: #D9622B; stroke-width: 3; } .bar { stroke: #D9622B; stroke-width: 1.5; }
+.dot { fill: #D9622B; stroke: #FFFFFF; stroke-width: 2; }
+.plabel { fill: #14202B; font: 600 13px Arial, sans-serif; }
+</style><rect width="100%" height="100%" fill="#FFFFFF"/>"""
+
+
+def load() -> list[tuple[str, dict, dict]]:
+    """(folder, front matter, result) for each record, oldest first."""
+    out = []
+    for folder in sorted((ROOT / "records").iterdir()):
+        if folder.is_dir() and folder.name != "template":
+            team = yaml.safe_load((folder / "README.md").read_text().split("---\n", 2)[1])
+            out.append((folder.name, team, json.loads((folder / "result.json").read_text())))
+    return sorted(out, key=lambda entry: -entry[2]["gift_eval"]["crps"])  # each record improves
+
+
+def table(entries) -> str:
+    rows = ["| # | GIFT-Eval CRPS | Description | Date | Record | Contributors |"]
+    rows.append("| ---: | --- | --- | --- | --- | --- |")
+    for number, (folder, team, result) in enumerate(entries, 1):
+        score = result["gift_eval"]
+        handles = [m["github"] for m in team["members"]]
+        people = ", ".join(f"[@{h}](https://github.com/{h})" for h in handles)
+        crps = f"{score['crps']:.4f} ± {score['crps_sd']:.4f}"
+        date = folder.split("_", 1)[0]
+        link = f"[{folder}](records/{folder}/)"
+        rows.append(f"| {number} | {crps} | {team['description']} | {date} | {link} | {people} |")
+    return "\n".join(rows)
 
 
 def esc(text) -> str:
@@ -117,7 +172,7 @@ def people(team: dict) -> str:
     )
 
 
-def record_chart(entries) -> str:
+def record_chart(entries, standalone=False) -> str:
     """Record history, lower CRPS drawn higher, with published models as dotted lines."""
     width, height, left, right, top, bottom = 960, 380, 64, 250, 24, 44
     means = [r["gift_eval"]["crps"] for _, _, r in entries]
@@ -145,7 +200,7 @@ def record_chart(entries) -> str:
         parts.append(
             f'<line class="milestone" x1="{left}" x2="{width - right}" y1="{y(value):.1f}" '
             f'y2="{y(value):.1f}"/><text class="mlabel" x="{width - right + 10}" '
-            f'y="{y(value) + 4:.1f}">{esc(label.split(",")[0])} {value:.3f}</text>'
+            f'y="{y(value) + 4:.1f}">{esc(label)} {value:.3f}</text>'
         )
     points = [(x(i), y(m)) for i, m in enumerate(means)]
     path = f"M{points[0][0]:.1f},{points[0][1]:.1f}"
@@ -174,10 +229,11 @@ def record_chart(entries) -> str:
         f'transform="rotate(-90 14 {top + (height - top - bottom) / 2:.1f})" '
         f'text-anchor="middle">GIFT-Eval relative CRPS, better ↑</text>'
     )
-    return (
-        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Record history">'
-        f"{''.join(parts)}</svg>"
-    )
+    head = f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Record history"'
+    if standalone:
+        head += f' xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">'
+        return head + CHART_STYLE + "".join(parts) + "</svg>"
+    return head + ">" + "".join(parts) + "</svg>"
 
 
 def loss_chart(result) -> str:
@@ -311,7 +367,7 @@ most one hour of training on one A100.">
 </head>
 <body>
 <main>
-<nav><a class="name" href="{REPO}">nanoTSFM</a>
+<nav><a class="wm" href="{REPO}" aria-label="nanoTSFM on GitHub"><i>nano</i><b>TSFM</b></a>
 <span class="links"><a href="{REPO}/blob/main/docs/rules.md">Rules</a>
 <a href="{REPO}/blob/main/docs/submission.md">Submit a result</a>
 <a href="{REPO}">GitHub</a></span></nav>
@@ -333,7 +389,8 @@ the mean of three or more verified runs.</p>
 <tr><th>#</th><th>GIFT-Eval CRPS</th><th>MASE</th><th>Runs</th><th>Change</th><th>Date</th>
 <th>Contributors</th></tr>{table}</table></div></section>
 <section><h2>Each record</h2>{details}</section>
-<footer>Built from <a href="{REPO}/tree/main/records">records/</a> at
+<footer><span class="wm small"><i>nano</i><b>TSFM</b></span> · built from
+<a href="{REPO}/tree/main/records">records/</a> at
 <span class="mono">{esc(built[:7])}</span>. A new record must beat the last by more than seed
 noise; <a href="{REPO}/blob/main/docs/submission.md">here is how to submit</a>.</footer>
 </main>
@@ -343,9 +400,12 @@ noise; <a href="{REPO}/blob/main/docs/submission.md">here is how to submit</a>.<
 
 
 def main():
+    entries = load()
+    if sys.argv[1:] == ["--table"]:
+        print(table(entries))
+        return
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
     out.mkdir(parents=True, exist_ok=True)
-    entries = load()
     built = (
         os.environ.get("GITHUB_SHA")
         or subprocess.run(
@@ -353,7 +413,7 @@ def main():
         ).stdout.strip()
     )
     (out / "index.html").write_text(page(entries, built))
-    figure(entries, out / "records.png")
+    (out / "records.svg").write_text(record_chart(entries, standalone=True))
     print(out / "index.html")
 
 

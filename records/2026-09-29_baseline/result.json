@@ -1,8 +1,6 @@
 {
   "commit": "e9df886999138e66e4bc50cc537db235828e3a9a",
-  "base": "e9df886999138e66e4bc50cc537db235828e3a9a",
   "uncommitted_changes": false,
-  "evaluation_sha256": "216dbce80328ab22aa6b53b4eca264a745f0e07602dc728ac0c4d9e971e5c503",
   "torch": "2.14.0+cu130",
   "cuda": "13.0",
   "parameters": 3326240,

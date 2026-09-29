@@ -1,6 +1,7 @@
 # nanoTSFM
 
 [![Data on Hugging Face][data-badge]][data]
+[![World record][record-badge]][site]
 [![Python 3.13][python-badge]][uv]
 [![PyTorch][torch-badge]][torch]
 [![uv][uv-badge]][uv]
@@ -47,10 +48,10 @@ The [rules](docs/rules.md) have the details.
 | ---: | --- | --- | --- | --- | --- |
 | 1 | 0.6699 ± 0.0073 | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
-[![GIFT-Eval record history](https://abel-ai-lab.github.io/nanoTSFM/records.png)](https://abel-ai-lab.github.io/nanoTSFM/)
+[![GIFT-Eval record history][chart]][site]
 
-Each record is the mean ± sd of three or more verified runs; [the record page](https://abel-ai-lab.github.io/nanoTSFM/)
-shows every run. A new record must beat the last by
+Each record is the mean ± sd of three or more verified runs; the [record page][site] shows every
+run. A new record must beat the last by
 more than seed noise; the [submission](docs/submission.md) page has the rule and the steps, and
 [`records/`](records/) has every record's report. Dotted lines mark published models on the
 GIFT-Eval leaderboard, including Toto-2.0-4m, the same design trained far longer on far more data.
@@ -102,7 +103,7 @@ Nothing needs configuring. To change a default, copy [`.env.example`](.env.examp
 | `src/nanotsfm/evaluation.py` | GIFT-Eval and GEP scoring (fixed) |
 | `run.sh` | Every command |
 | `configs/` | Training configurations and the GIFT-Eval task list |
-| `scripts/` | The submission tools and the record figure |
+| `scripts/` | The submission tools and the record page |
 | `records/` | Every record's report and results, with a template |
 
 The model reads history `[B,V,C]` and series IDs `[B,V]` (equal IDs mark related variates; NaN
@@ -134,6 +135,9 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 [license-badge]: https://img.shields.io/badge/license-MIT-2E7A58
 [gift]: https://huggingface.co/spaces/Salesforce/GIFT-Eval
 [data-badge]: https://img.shields.io/badge/data-nanoTSFM--pretrain-FFD21E?logo=huggingface
+[record-badge]: https://img.shields.io/badge/world%20record-record%20page-D9622B
+[site]: https://abel-ai-lab.github.io/nanoTSFM/
+[chart]: https://abel-ai-lab.github.io/nanoTSFM/records.svg
 [data]: https://huggingface.co/datasets/abel-lab/nanoTSFM-pretrain
 [gep]: https://huggingface.co/datasets/Salesforce/GiftEvalPretrain
 [toto2]: https://arxiv.org/abs/2605.20119

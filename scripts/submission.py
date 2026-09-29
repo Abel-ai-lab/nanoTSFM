@@ -1,7 +1,7 @@
 """Package, check and verify submissions.
 
-python -m scripts.submission package records/NAME RUN_DIR... [--base COMMIT]
-python -m scripts.submission check records/NAME [--runs RUN_DIR...] [--against records/OTHER]
+python -m scripts.submission package records/NAME RUN_DIR...
+python -m scripts.submission check records/NAME [--runs RUN_DIR...]
 python -m scripts.submission verify records/NAME --output DIR [--runs RUN...]
 python -m scripts.submission guard CHANGED_FILE...
 """
@@ -75,7 +75,7 @@ def check_team(team: dict, readme: Path):
 
 
 def check_result(result: dict):
-    for key in ("commit", "base", "evaluation_sha256", "config", "data", "gift_eval", "runs"):
+    for key in ("commit", "config", "data", "gift_eval", "runs"):
         if not result.get(key):
             raise ValueError(f"result.json lacks {key}; package it with ./run.sh submit")
     if result.get("uncommitted_changes") is not False:
@@ -101,15 +101,6 @@ def check_folder(folder: Path):
         raise ValueError(
             f"{folder} must hold exactly {', '.join(FILES)}; missing {missing}, extra {extra}"
         )
-
-
-def frozen_sha256(base: str) -> str:
-    try:
-        return hashlib.sha256(
-            subprocess.check_output(["git", "-C", str(ROOT), "show", f"{base}:{FROZEN}"])
-        ).hexdigest()
-    except subprocess.CalledProcessError as error:
-        raise ValueError(f"Base commit {base} is not here; fetch {UPSTREAM} main") from error
 
 
 def check_training(commit: str):
@@ -162,7 +153,7 @@ def current_record(folder: Path, tree: str | None = None) -> tuple[str, dict] | 
     return min(earlier, key=lambda item: item[1]["gift_eval"]["crps"]) if earlier else None
 
 
-def package(folder: Path, run_dirs: list[Path], base: str | None = None) -> Path:
+def package(folder: Path, run_dirs: list[Path]) -> Path:
     if not (folder / "README.md").exists():
         raise FileNotFoundError(f"Copy records/template to {folder} and fill in README.md")
     if len(run_dirs) < MIN_RUNS:
@@ -191,7 +182,6 @@ def package(folder: Path, run_dirs: list[Path], base: str | None = None) -> Path
                 "run": run_dir.name,
                 "seed": config["training"]["seed"],
                 "checkpoint_sha256": sha256(run_dir / "checkpoint.pt"),
-                "evaluation_sha256": sha256(run_dir / "code" / "evaluation.py"),
                 "device": run["device_name"],
                 "parameters": run["parameters"],
                 "data": run["data"],
@@ -210,22 +200,12 @@ def package(folder: Path, run_dirs: list[Path], base: str | None = None) -> Path
     unseeded = [json.dumps({**c, "training": {**c["training"], "seed": None}}) for c in configs]
     if len(set(unseeded)) != 1 or len({json.dumps(r["data"]) for r in runs}) != 1:
         raise ValueError("Runs may differ only in their seed")
-    commit = environments[0]["commit"]
-    if base is None:
-        try:
-            git("fetch", "--quiet", UPSTREAM, "main")
-        except subprocess.CalledProcessError as error:
-            raise RuntimeError(f"Cannot fetch {UPSTREAM}; pass --base COMMIT") from error
-        base = git("merge-base", commit, "FETCH_HEAD").strip()
-    evaluation = {r.pop("evaluation_sha256") for r in runs}
     shared = {k: runs[0][k] for k in ("parameters", "data")}
     for run in runs:
         del run["parameters"], run["data"]
     result = {
-        "commit": commit,
-        "base": git("rev-parse", base).strip(),
+        "commit": environments[0]["commit"],
         "uncommitted_changes": False,
-        "evaluation_sha256": evaluation.pop() if len(evaluation) == 1 else None,
         "torch": environments[0]["torch"],
         "cuda": environments[0]["cuda"],
         **shared,
@@ -270,14 +250,12 @@ def interface_check(checkpoint: Path, result: dict, run: dict):
         raise ValueError("The model fails the forecast interface check")
 
 
-def check(folder: Path, run_dirs=(), against: Path | None = None) -> dict:
+def check(folder: Path, run_dirs=()) -> dict:
     check_folder(folder)
     team = front_matter(folder / "README.md")
     check_team(team, folder / "README.md")
     result = json.loads((folder / "result.json").read_text())
     check_result(result)
-    if result["evaluation_sha256"] != frozen_sha256(result["base"]):
-        raise ValueError("The runs changed evaluation.py, which must stay as supplied")
     by_name = {r["run"]: r for r in result["runs"]}
     for run_dir in run_dirs:
         if run_dir.name not in by_name:
@@ -288,14 +266,10 @@ def check(folder: Path, run_dirs=(), against: Path | None = None) -> dict:
         "team": team["team"],
         "gift_eval": {k: round(v, 4) for k, v in result["gift_eval"].items()},
     }
-    other = (
-        (against.name, json.loads((against / "result.json").read_text()))
-        if against
-        else current_record(folder)
-    )
+    other = current_record(folder)
     if other:
         name, best = other
-        summary["against"] = {name: round(best["gift_eval"]["crps"], 4)}
+        summary["record"] = {name: round(best["gift_eval"]["crps"], 4)}
         summary.update(compare(result["gift_eval"], best["gift_eval"]))
     return summary
 
@@ -410,11 +384,9 @@ def main():
     pack = sub.add_parser("package", help="Write result.json from three or more runs")
     pack.add_argument("folder", type=Path, help="Record folder, such as records/2026-10-01_name")
     pack.add_argument("runs", type=Path, nargs="+", help="Run folders, such as runs/final-s7")
-    pack.add_argument("--base", help="The nanoTSFM commit you started from; default: merge-base")
     inspect = sub.add_parser("check", help="Check a record folder")
     inspect.add_argument("folder", type=Path)
     inspect.add_argument("--runs", type=Path, nargs="*", default=(), help="Run folders to check")
-    inspect.add_argument("--against", type=Path, help="Compare with this record, not the best")
     retrain = sub.add_parser("verify", help="Retrain and score a submission (maintainers)")
     retrain.add_argument("folder", type=Path)
     retrain.add_argument("--output", type=Path, required=True, help="Folder for the retrains")
@@ -426,9 +398,9 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == "package":
-            print(package(args.folder, args.runs, args.base))
+            print(package(args.folder, args.runs))
         elif args.command == "check":
-            print(json.dumps(check(args.folder, args.runs, args.against), indent=2))
+            print(json.dumps(check(args.folder, args.runs), indent=2))
         elif args.command == "verify":
             verdict = verify(args.folder, args.output, args.device, args.official, args.runs)
             print(json.dumps(verdict, indent=2))
