@@ -66,6 +66,9 @@ def check_team(team: dict, readme: Path):
 
 
 def check_result(result: dict):
+    for key in ("commit", "base", "evaluation_sha256", "config", "data", "gift_eval", "runs"):
+        if not result.get(key):
+            raise ValueError(f"result.json lacks {key}; package it with ./run.sh submit")
     if result.get("uncommitted_changes") is not False:
         raise ValueError("The runs had uncommitted changes; commit, push and train again")
     if result["config"]["training"]["max_seconds"] > TIME_CAP_SECONDS:
@@ -80,9 +83,6 @@ def check_result(result: dict):
             raise ValueError(f"{run['run']} exceeds the {TIME_CAP_SECONDS}-second training cap")
         if not run.get("gift_eval"):
             raise ValueError(f"{run['run']} has no GIFT-Eval score")
-    for key in ("commit", "base", "evaluation_sha256", "gift_eval"):
-        if not result.get(key):
-            raise ValueError(f"result.json lacks {key}; package it with ./run.sh submit")
 
 
 def check_folder(folder: Path):
@@ -146,6 +146,8 @@ def current_record(folder: Path, tree: str | None = None) -> tuple[str, dict] | 
 def package(folder: Path, run_dirs: list[Path], base: str | None = None) -> Path:
     if not (folder / "README.md").exists():
         raise FileNotFoundError(f"Copy records/template to {folder} and fill in README.md")
+    if len(run_dirs) < MIN_RUNS:
+        raise ValueError(f"Package at least {MIN_RUNS} runs with different seeds")
     runs, configs, environments = [], [], []
     for run_dir in run_dirs:
         if not (run_dir / "gift.json").exists():
