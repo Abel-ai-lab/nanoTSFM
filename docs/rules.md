@@ -19,7 +19,7 @@ baseline scored 0.670 after 2 minutes, about 114th of 131 models on the leaderbo
   quantile levels. Relative MASE is reported beside it.
 - **Seeds:** runs vary by about ±0.007. Report the mean and spread over three seeds for every
   configuration you compare, and treat smaller differences as noise.
-- **Evidence:** an attempt reports every run of its final configuration, at least three seeds at
+- **Evidence:** a submission reports every run of its final configuration, at least three seeds at
   one commit. It sets a record when its mean beats the record's by the
   [record rule](submission.md#the-record-rule): at least 0.013 with three runs each.
 - `./run.sh eval <run>` computes the score in about 5 minutes on 8 CPU cores. The benchmark is
@@ -40,7 +40,7 @@ is the challenge.
 - At most 3,600 seconds of training per run, as `run.json` records. Setup, data loading,
   validation, checkpointing and evaluation are off the clock.
 - Final runs use an A100 80GB. Develop on any GPU; final runs on other hardware may be re-timed.
-- Maintainers verify every attempt by retraining each run from its code on an A100 80GB: each
+- Maintainers verify every submission by retraining each run from its code on an A100 80GB: each
   retrain must finish within the cap and score within 0.01 of its report.
 
 ## Data
@@ -55,12 +55,12 @@ is the challenge.
 ## Fixed
 
 - `src/nanotsfm/evaluation.py`, `configs/gift-full.json`, `scripts/submission.py` and `.github/`:
-  maintainers verify every attempt with the official versions of these files.
+  maintainers verify every submission with the official versions of these files.
 - The forecast interface in the [README](../README.md), which the evaluator calls.
 
 Everything else is yours to change.
 
 ## Open source
 
-Your fork must be public, and the runs' commit must be pushed. Attempts arrive as pull requests;
+Your fork must be public, and the runs' commit must be pushed. Submissions arrive as pull requests;
 see [submission](submission.md).

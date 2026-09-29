@@ -7,8 +7,8 @@ meta:
 
 # Course
 
-The course runs nanoTSFM as a five-week project. Teams of one or two students attempt the
-[record](submission.md) under the [rules](rules.md), and the organizers verify every attempt the
+The course runs nanoTSFM as a five-week project. Teams of one or two students try to set the
+[record](submission.md) under the [rules](rules.md), and the organizers verify every submission the
 same way. Teams earn points for beating the course bar and for each record they set. The
 top-ranked team earns an internship opportunity and a publication opportunity. Items marked *TBA*
 are announced with the course.
@@ -31,20 +31,20 @@ with an ASU Research Computing account can also use the Sol cluster at no cost.
 ## Hand-in
 
 One member opens the team's pull request, as [submission](submission.md) describes, whether or not
-it beats the record. Teams may open attempts during the course, one at a time, until the deadline
+it beats the record. Teams may open submissions during the course, one at a time, until the deadline
 (*TBA*). The team's repository must be public.
 
 ## Final evaluation
 
-1. The organizers verify each attempt by retraining every run, as the
+1. The organizers verify each submission by retraining every run, as the
    [review](submission.md#review) describes. Runs count if their retrained scores are within 0.01
    of the reported ones; if they fail, the team is contacted once to fix packaging problems.
 2. Points:
-   - **1 point** if any of the team's attempts has a lower verified mean GIFT-Eval CRPS than the
+   - **1 point** if any of the team's submissions has a lower verified mean GIFT-Eval CRPS than the
      course bar: record 2, `Shu-Wan`, at 0.633.
    - **1 point** for each record the team sets during the course, under the
      [record rule](submission.md#the-record-rule).
-3. Teams are ranked by points, then by the verified mean CRPS of their best attempt, then by its
+3. Teams are ranked by points, then by the verified mean CRPS of their best submission, then by its
    mean MASE.
 
 ## Awards

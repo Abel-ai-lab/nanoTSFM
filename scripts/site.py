@@ -313,7 +313,7 @@ most one hour of training on one A100.">
 <main>
 <nav><a class="name" href="{REPO}">nanoTSFM</a>
 <span class="links"><a href="{REPO}/blob/main/docs/rules.md">Rules</a>
-<a href="{REPO}/blob/main/docs/submission.md">Attempt the record</a>
+<a href="{REPO}/blob/main/docs/submission.md">Submit a result</a>
 <a href="{REPO}">GitHub</a></span></nav>
 <header class="hero">
 <div><p class="eyebrow">World record #{number} · {esc(folder.split("_", 1)[0])}</p>
@@ -335,7 +335,7 @@ the mean of three or more verified runs.</p>
 <section><h2>Each record</h2>{details}</section>
 <footer>Built from <a href="{REPO}/tree/main/records">records/</a> at
 <span class="mono">{esc(built[:7])}</span>. A new record must beat the last by more than seed
-noise; <a href="{REPO}/blob/main/docs/submission.md">here is how to attempt it</a>.</footer>
+noise; <a href="{REPO}/blob/main/docs/submission.md">here is how to submit</a>.</footer>
 </main>
 </body>
 </html>

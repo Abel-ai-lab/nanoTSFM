@@ -23,7 +23,7 @@ Open work, most useful first.
 Open questions that [modded-nanogpt](https://github.com/KellerJordan/modded-nanogpt) answers for
 its own record.
 
-- [ ] Keep notable attempts that break a rule or miss the record in a separate list, so good ideas
+- [ ] Keep notable submissions that break a rule or miss the record in a separate list, so good ideas
   are not lost.
 - [ ] Record rulings on edge cases in one place, a FAQ in the [rules](rules.md).
 - [ ] Announce each record in a short post that credits its contributors.

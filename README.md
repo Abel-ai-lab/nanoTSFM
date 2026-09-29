@@ -113,7 +113,7 @@ marks missing values) and returns nine quantiles `[B,V,H,9]` in original units.
 - [Rules](docs/rules.md): score, budget, data, diagnostics.
 - [Data](docs/data.md): corpus, split, GEP datasets.
 - [Directions](docs/directions.md): improvement ideas by pipeline stage, with pilot results.
-- [Submission](docs/submission.md): attempting the record, and how maintainers verify it.
+- [Submission](docs/submission.md): submitting a result, and how maintainers verify it.
 - [Contributing](CONTRIBUTING.md): pull request rules.
 - [Course](docs/course.md): schedule, final evaluation, awards.
 - [To do](docs/todo.md): open work.

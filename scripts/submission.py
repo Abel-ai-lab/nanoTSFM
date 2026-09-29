@@ -1,4 +1,4 @@
-"""Package, check and verify record attempts.
+"""Package, check and verify submissions.
 
 python -m scripts.submission package records/NAME RUN_DIR... [--base COMMIT]
 python -m scripts.submission check records/NAME [--runs RUN_DIR...] [--against records/OTHER]
@@ -415,7 +415,7 @@ def main():
     inspect.add_argument("folder", type=Path)
     inspect.add_argument("--runs", type=Path, nargs="*", default=(), help="Run folders to check")
     inspect.add_argument("--against", type=Path, help="Compare with this record, not the best")
-    retrain = sub.add_parser("verify", help="Retrain and score a record attempt (maintainers)")
+    retrain = sub.add_parser("verify", help="Retrain and score a submission (maintainers)")
     retrain.add_argument("folder", type=Path)
     retrain.add_argument("--output", type=Path, required=True, help="Folder for the retrains")
     retrain.add_argument("--device", default="auto")

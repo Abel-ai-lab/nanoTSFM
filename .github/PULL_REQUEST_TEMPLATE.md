@@ -1,8 +1,8 @@
-<!-- Attempting the record? Fill in Attempt and delete Change. Otherwise, the reverse.
-Title an attempt "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
+<!-- Submitting a result? Fill in Submission and delete Change. Otherwise, the reverse.
+Title a submission "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
 "my-team: 0.633, weight every series equally". -->
 
-## Attempt
+## Submission
 
 - Record folder: `records/<YYYY-MM-DD>_<name>/`
 - Runs' commit, from `result.json`:
@@ -15,7 +15,7 @@ Title an attempt "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
 | | GIFT-Eval CRPS | GEP-Val | Training |
 | --- | ---: | ---: | ---: |
 | Record you built on | | | |
-| This attempt | | | |
+| This submission | | | |
 
 **Ablation:** how much of the gain each change brings.
 

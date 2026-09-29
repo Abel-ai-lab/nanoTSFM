@@ -1,10 +1,10 @@
 # Contributing
 
-## Attempting the record
+## Submitting a result
 
 1. Fork this repository and work on a branch of your fork, which must be public.
-2. Train three or more seeds of your final configuration on top of the current record, score them
-   on GIFT-Eval and package them (see [submission](docs/submission.md)):
+2. Merge `main`, then train three or more seeds of your final configuration, score them on
+   GIFT-Eval and package them (see [submission](docs/submission.md)):
 
    ```shell
    ./run.sh submit <YYYY-MM-DD>_<name> final-s7 final-s1 final-s2
@@ -18,7 +18,7 @@
 
 ## Keep pull requests small
 
-- One attempt per pull request, with only the code it needs.
+- One submission per pull request, with only the code it needs.
 - Never commit runs, checkpoints, data, caches or notebook outputs. Git ignores them; don't
   force-add them. Files over 1 MB are rejected.
 

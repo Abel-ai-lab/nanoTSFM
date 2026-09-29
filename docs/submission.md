@@ -1,6 +1,6 @@
 ---
 name: submission
-description: How to attempt the record, and how maintainers verify an attempt.
+description: How to submit a result, and how maintainers verify it.
 meta:
   type: knowledge
 ---
@@ -8,7 +8,7 @@ meta:
 # Submission
 
 nanoTSFM keeps a world record, as [modded-nanogpt](https://github.com/KellerJordan/modded-nanogpt)
-does. An attempt is a pull request that brings your code and a record folder. If its verified runs
+does. A submission is a pull request that brings your code and a record folder. If its verified runs
 beat the record, it is merged and `main` becomes the new record; otherwise it is closed with its
 verified score.
 
@@ -17,7 +17,7 @@ commit, so any record can be reproduced and you may start from any of them.
 [The record page](https://abel-ai-lab.github.io/nanoTSFM/) shows every record with its runs, and
 [`records/`](../records/) has the reports.
 
-## What an attempt holds
+## What a submission holds
 
 - **Your code**, as commits on a branch of your fork. Merge `main` before your final runs, so that
   after the merge `main` trains exactly what your runs trained; the guard checks this.
@@ -54,11 +54,11 @@ commit, so any record can be reproduced and you may start from any of them.
 
 Report other seeds and ablations in the README. If you train on data your own code builds, give the
 command in the README; verification runs it. To try again, push new runs to the same branch or open
-a new pull request; keep one attempt per team open at a time.
+a new pull request; keep one submission per team open at a time.
 
 ## The record rule
 
-An attempt sets a record when its mean GIFT-Eval CRPS is below the record's by at least
+A submission sets a record when its mean GIFT-Eval CRPS is below the record's by at least
 2.33 × 0.007 × √(1/n + 1/m), where n and m are the two run counts and 0.007 is the baseline's seed
 spread: a one-sided test at p < 0.01. With three runs each the gap must be at least 0.013; more
 runs lower it.
