@@ -15,7 +15,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
-SITE = "https://abel-ai-lab.github.io/nanoTSFM/"
 # GIFT-Eval leaderboard at gift-eval commit 9a014e9: zero-shot models without test leakage.
 MILESTONES = [
     ("TimesFM-3", 0.456),
@@ -23,111 +22,105 @@ MILESTONES = [
     ("TinyCast", 0.545),
     ("Moirai-small", 0.650),
 ]
+LINKS = [
+    ("Code", REPO),
+    ("Data", "https://huggingface.co/datasets/abel-lab/nanoTSFM-pretrain"),
+    ("Rules", f"{REPO}/blob/main/docs/rules.md"),
+    ("Submit a result", f"{REPO}/blob/main/docs/submission.md"),
+]
+ABOUT = """nanoTSFM is an open benchmark for training small time-series foundation models on a fixed
+budget. A run trains a 3.3M-parameter simplified Toto 2.0 for at most one hour on one A100 80GB,
+using data from GIFT-Eval Pretrain, and is then scored zero-shot on GIFT-Eval."""
+SETUP = [
+    (
+        "Model",
+        "3.3M-parameter simplified Toto 2.0; everything but the forecast interface may change",
+    ),
+    ("Data", "GIFT-Eval Pretrain, as the GEP-S, GEP-M and GEP-L slices on Hugging Face"),
+    ("Budget", "At most 3,600 seconds of training per run on one A100 80GB"),
+    (
+        "Score",
+        "GIFT-Eval CRPS relative to Seasonal Naive, 97 tasks, geometric mean; lower is better",
+    ),
+]
+RULE = """A record is the mean of three or more runs at one commit, retrained by the maintainers. It
+must improve on the previous record by more than seed noise: 0.013 with three runs each."""
+FOOTNOTE = """Each gray dot is one verified run; the orange line is the record, the mean of its
+runs. Dashed lines mark published models on the GIFT-Eval leaderboard."""
 FONTS = (
-    "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600"
-    "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,600&display=swap"
+    "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
+    "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
 )
-STYLE = """
-:root {
-  --paper: #F4F5F1; --surface: #FFFFFF; --ink: #14202B; --text: #3E4A56; --muted: #6B7682;
-  --rule: #D5DAD3; --accent: #D9622B; --good: #1F6B47; --milestone: #8C99A6;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #10181F; --surface: #17222C; --ink: #F4F5F1; --text: #C9D3DC; --muted: #8C99A6;
-    --rule: #2A3845; --accent: #F08A55; --good: #7FD1A6; --milestone: #6B7682;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --paper: #10181F; --surface: #17222C; --ink: #F4F5F1; --text: #C9D3DC; --muted: #8C99A6;
-  --rule: #2A3845; --accent: #F08A55; --good: #7FD1A6; --milestone: #6B7682;
-  color-scheme: dark;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--paper); color: var(--text);
-  font: 16px/1.55 "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-}
-main { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px;
-  display: flex; flex-direction: column; gap: 56px; }
-a { color: var(--accent); text-underline-offset: 3px; }
-a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-h1, h2, h3 { color: var(--ink); margin: 0; text-wrap: balance; }
-h2 { font-size: 22px; font-weight: 600; }
-.mono, table, .num { font-family: "IBM Plex Mono", Menlo, Consolas, monospace;
-  font-variant-numeric: tabular-nums; }
-nav { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline;
-  justify-content: space-between; }
-.wm { font: 600 22px "IBM Plex Sans", Arial, sans-serif; color: var(--ink); text-decoration: none; }
-.wm.small { font-size: 1em; }
-nav .links { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; }
-.eyebrow { font: 500 13px "IBM Plex Mono", Menlo, monospace; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--muted); margin: 0; }
-.hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 48px;
-  align-items: end; }
-.score { font: 500 clamp(64px, 12vw, 112px)/1 "IBM Plex Mono", Menlo, monospace;
-  color: var(--ink); letter-spacing: -0.02em; margin: 8px 0 4px; }
-.spread { font: 500 18px "IBM Plex Mono", Menlo, monospace; color: var(--muted); margin: 0 0 12px; }
-.holder { font-size: 18px; color: var(--ink); margin: 0; }
-.lede { margin: 0; max-width: 62ch; }
-.facts { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 16px 0 0; padding: 0;
-  list-style: none; }
-.facts b { display: block; font: 500 20px "IBM Plex Mono", Menlo, monospace; color: var(--ink); }
-.facts span { font-size: 13px; color: var(--muted); }
-section { display: flex; flex-direction: column; gap: 16px; }
-.chart { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
-  padding: 12px; overflow-x: auto; }
-.chart svg { display: block; width: 100%; min-width: 560px; height: auto; }
-.chart .axis, .chart .tick { fill: var(--muted); font: 12px "IBM Plex Mono", Menlo, monospace; }
-.chart .grid { stroke: var(--rule); stroke-width: 1; }
-.chart .milestone { stroke: var(--milestone); stroke-dasharray: 2 5; stroke-width: 1.5; }
-.chart .mlabel { fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-serif; }
-.chart .line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; }
-.chart .dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
-.chart .bar { stroke: var(--accent); stroke-width: 1.5; }
-.chart .plabel { fill: var(--ink); font: 600 13px "IBM Plex Sans", Arial, sans-serif; }
-.chart .seed { fill: none; stroke-width: 1.2; }
-.scroll { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th { text-align: left; font: 600 12px "IBM Plex Sans", Arial, sans-serif; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.08em; }
-th, td { padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-td.text { font-family: "IBM Plex Sans", Arial, sans-serif; color: var(--ink); }
-tr.best td { color: var(--good); }
-tr.best td.text { color: var(--ink); }
-details { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
-summary { cursor: pointer; padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 4px 16px;
-  align-items: baseline; list-style: none; }
-summary::-webkit-details-marker { display: none; }
-summary::before { content: "+"; font: 500 16px "IBM Plex Mono", monospace; color: var(--muted);
-  width: 12px; }
-details[open] summary::before { content: "\\2212"; }
-summary .title { font-weight: 600; color: var(--ink); font-size: 17px; }
-summary .num { color: var(--accent); }
-summary .meta { color: var(--muted); font-size: 14px; }
-.body { padding: 0 20px 20px; display: grid; gap: 20px; }
-.body h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--muted); font-weight: 600; }
-.changes { margin: 0; padding: 0; list-style: none; font: 14px "IBM Plex Mono", Menlo, monospace; }
-.changes li { padding: 2px 0; }
-.links { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; }
-footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule);
-  padding-top: 16px; }
-@media (max-width: 720px) { .hero { grid-template-columns: 1fr; } }
-@media (prefers-reduced-motion: no-preference) { details[open] .body { animation: open .2s; } }
-@keyframes open { from { opacity: 0.4; } to { opacity: 1; } }
+TOKENS = """--paper: #FFFFFF; --ink: #14202B; --text: #3E4A56; --muted: #6B7682; --rule: #E1E4E0;
+  --accent: #D9622B; --milestone: #8C99A6; --run: #A9B1BA;"""
+DARK = """--paper: #10181F; --ink: #F4F5F1; --text: #C9D3DC; --muted: #8C99A6; --rule: #2A3845;
+  --accent: #F08A55; --milestone: #6B7682; --run: #56626E; color-scheme: dark;"""
+STYLE = f"""
+:root {{ {TOKENS} }}
+@media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ {DARK} }} }}
+:root[data-theme="dark"] {{ {DARK} }}
+* {{ box-sizing: border-box; }}
+body {{ margin: 0; background: var(--paper); color: var(--text);
+  font: 16px/1.6 "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; }}
+a {{ color: var(--ink); text-underline-offset: 3px; }}
+a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outline-offset: 3px; }}
+.band {{ background: #14202B; color: #C9D3DC; }}
+.band .inner {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 56px 44px; }}
+.band h1 {{ margin: 0; color: #F4F5F1; font-size: 44px; font-weight: 600; line-height: 1.1; }}
+.band p {{ margin: 12px 0 24px; font-size: 18px; max-width: 60ch; }}
+.buttons {{ display: flex; flex-wrap: wrap; gap: 10px; }}
+.buttons a {{ color: #F4F5F1; border: 1px solid #3A4A5A; border-radius: 6px; padding: 7px 14px;
+  text-decoration: none; font-size: 14px; }}
+.buttons a:hover {{ border-color: #C9D3DC; }}
+main {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 64px; }}
+h2 {{ color: var(--ink); font-size: 22px; font-weight: 600; margin: 44px 0 12px; }}
+.figure {{ width: min(1040px, calc(100vw - 40px)); position: relative; left: 50%;
+  transform: translateX(-50%); margin: 8px 0 0; }}
+.figure .scroll svg {{ min-width: 640px; }}
+figcaption {{ color: var(--muted); font-size: 14px; margin-top: 6px; }}
+svg {{ display: block; width: 100%; height: auto; }}
+svg .title {{ fill: var(--ink); font: 600 17px "IBM Plex Sans", Arial, sans-serif; }}
+svg .sub {{ fill: var(--muted); font: 13px "IBM Plex Sans", Arial, sans-serif; }}
+svg .tick {{ fill: var(--muted); font: 12px "IBM Plex Mono", Menlo, monospace; }}
+svg .grid {{ stroke: var(--rule); }}
+svg .ref {{ stroke: var(--milestone); stroke-dasharray: 5 5; }}
+svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
+svg .run {{ fill: var(--run); }}
+svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
+svg .rec {{ fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }}
+svg .change {{ fill: var(--accent); font: 12.5px "IBM Plex Sans", Arial, sans-serif; }}
+svg .seed {{ fill: none; stroke-width: 1.2; }}
+dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0; }}
+dt {{ color: var(--muted); }} dd {{ margin: 0; }}
+.scroll {{ overflow-x: auto; }}
+table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
+th {{ text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; }}
+th, td {{ padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }}
+td.n {{ font-family: "IBM Plex Mono", Menlo, monospace; font-variant-numeric: tabular-nums;
+  white-space: nowrap; }}
+details {{ border-top: 1px solid var(--rule); padding: 10px 0; }}
+details:last-of-type {{ border-bottom: 1px solid var(--rule); }}
+summary {{ cursor: pointer; color: var(--ink); }}
+.dim {{ color: var(--muted); }}
+.body {{ padding-top: 10px; display: grid; gap: 14px; }}
+.body p {{ margin: 0; }}
+.changes {{ margin: 0; padding-left: 18px; font: 14px "IBM Plex Mono", Menlo, monospace; }}
+footer {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 0 40px;
+  color: var(--muted); font-size: 13px; }}
+@media (max-width: 600px) {{ .band h1 {{ font-size: 36px; }} dl {{ grid-template-columns: 1fr; }} }}
 """
-SEEDS = ["var(--accent)", "var(--good)", "var(--milestone)", "var(--ink)"]
-# The README shows the chart as an image, outside the page's styles.
-CHART_STYLE = """<style>
-.grid { stroke: #D5DAD3; } .milestone { stroke: #8C99A6; stroke-dasharray: 2 5; stroke-width: 1.5; }
-.tick, .axis { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
-.mlabel { fill: #8C99A6; font: 12px Arial, sans-serif; }
-.line { fill: none; stroke: #D9622B; stroke-width: 3; } .bar { stroke: #D9622B; stroke-width: 1.5; }
-.dot { fill: #D9622B; stroke: #FFFFFF; stroke-width: 2; }
-.plabel { fill: #14202B; font: 600 13px Arial, sans-serif; }
+# The README shows the figure as an image, outside the page's styles.
+STANDALONE = """<style>
+.title { fill: #14202B; font: 600 17px Arial, sans-serif; }
+.sub { fill: #6B7682; font: 13px Arial, sans-serif; }
+.tick { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
+.grid { stroke: #E1E4E0; } .ref { stroke: #8C99A6; stroke-dasharray: 5 5; }
+.rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
+.best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
+.rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
+.change { fill: #D9622B; font: 12.5px Arial, sans-serif; }
 </style><rect width="100%" height="100%" fill="#FFFFFF"/>"""
+SEEDS = ["var(--accent)", "var(--ink)", "var(--milestone)", "var(--muted)"]
 
 
 def load() -> list[tuple[str, dict, dict]]:
@@ -165,12 +158,13 @@ def people(team: dict) -> str:
     )
 
 
-def record_chart(entries, standalone=False) -> str:
-    """Record history, lower CRPS drawn higher, with published models as dotted lines."""
-    width, height, left, right, top, bottom = 960, 380, 64, 250, 24, 44
+def progress_chart(entries, standalone=False) -> str:
+    """Every verified run as a gray dot, the record as a step line; lower CRPS is better."""
+    width, height, left, right, top, bottom = 960, 470, 64, 200, 74, 44
+    runs = [run["gift_eval"]["geometric_relative_crps"] for _, _, r in entries for run in r["runs"]]
     means = [r["gift_eval"]["crps"] for _, _, r in entries]
-    lo = min([m for _, m in MILESTONES] + means) - 0.01
-    hi = max(means) + 0.02
+    lo = min(runs + [v for _, v in MILESTONES]) - 0.01
+    hi = max(runs) + 0.01
     count = len(entries)
 
     def x(i):
@@ -179,53 +173,56 @@ def record_chart(entries, standalone=False) -> str:
     def y(v):
         return top + (height - top - bottom) * (hi - v) / (hi - lo)
 
-    parts = []
+    parts = [
+        f'<text class="title" x="{left}" y="26">{count} records: GIFT-Eval relative CRPS '
+        f"{means[0]:.3f} → {means[-1]:.3f}</text>"
+        f'<text class="sub" x="{left}" y="48">Mean of three or more seeds per record · 97 tasks, '
+        "zero-shot · lower is better</text>"
+    ]
     tick = round(lo * 20) / 20
-    while tick <= hi:
+    while tick <= hi + 1e-9:
         if tick >= lo:
             parts.append(
                 f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
-                f'y2="{y(tick):.1f}"/><text class="tick" x="{left - 10}" y="{y(tick) + 4:.1f}" '
+                f'y2="{y(tick):.1f}"/><text class="tick" x="{left - 8}" y="{y(tick) + 4:.1f}" '
                 f'text-anchor="end">{tick:.2f}</text>'
             )
         tick = round(tick + 0.05, 2)
-    for label, value in MILESTONES:
+    for name, value in MILESTONES:
         parts.append(
-            f'<line class="milestone" x1="{left}" x2="{width - right}" y1="{y(value):.1f}" '
-            f'y2="{y(value):.1f}"/><text class="mlabel" x="{width - right + 10}" '
-            f'y="{y(value) + 4:.1f}">{esc(label)} {value:.3f}</text>'
+            f'<line class="ref" x1="{left}" x2="{width - right}" y1="{y(value):.1f}" '
+            f'y2="{y(value):.1f}"/><text class="rlabel" x="{width - right + 8}" '
+            f'y="{y(value) + 4:.1f}">{esc(name)} {value:.3f}</text>'
         )
-    points = [(x(i), y(m)) for i, m in enumerate(means)]
-    path = f"M{points[0][0]:.1f},{points[0][1]:.1f}"
-    for px, py in points[1:]:
-        path += f" H{px:.1f} V{py:.1f}"
-    path += f" H{width - right:.1f}"
-    parts.append(f'<path class="line" d="{path}"/>')
-    for i, (folder, _, result) in enumerate(entries):
+    for i, (_, _, result) in enumerate(entries):
+        scores = [run["gift_eval"]["geometric_relative_crps"] for run in result["runs"]]
+        for j, score in enumerate(scores):
+            dx = (j - (len(scores) - 1) / 2) * 7
+            parts.append(f'<circle class="run" cx="{x(i) + dx:.1f}" cy="{y(score):.1f}" r="3.5"/>')
+    path = f"M{x(0):.1f},{y(means[0]):.1f}"
+    for i in range(1, count):
+        path += f" H{x(i):.1f} V{y(means[i]):.1f}"
+    parts.append(f'<path class="best" d="{path} H{width - right:.1f}"/>')
+    for i, (_, team, result) in enumerate(entries):
+        label = team["description"] if i else "baseline"
         score = result["gift_eval"]
-        px, py = points[i]
-        spread = score["crps_sd"] * (height - top - bottom) / (hi - lo)
         parts.append(
-            f"<g><title>Record {i + 1}: {score['crps']:.4f} ± "
-            f"{score['crps_sd']:.4f} over {score['runs']} runs</title>"
-            f'<line class="bar" x1="{px:.1f}" x2="{px:.1f}" y1="{py - spread:.1f}" '
-            f'y2="{py + spread:.1f}"/><circle class="dot" cx="{px:.1f}" cy="{py:.1f}" r="7"/>'
-            f'<text class="plabel" x="{px + 12:.1f}" y="{py - 12:.1f}">#{i + 1} '
-            f"{score['crps']:.3f}</text></g>"
-        )
-        parts.append(
-            f'<text class="tick" x="{px:.1f}" y="{height - bottom + 22}" '
-            f'text-anchor="middle">{esc(folder.split("_", 1)[0])}</text>'
+            f'<circle class="rec" cx="{x(i):.1f}" cy="{y(means[i]):.1f}" r="5">'
+            f"<title>Record {i + 1}: {score['crps']:.4f} ± {score['crps_sd']:.4f} over "
+            f"{score['runs']} runs</title></circle>"
+            f'<text class="change" transform="translate({x(i) + 8:.1f},{y(means[i]) - 10:.1f}) '
+            f'rotate(-28)">{esc(label)}</text>'
+            f'<text class="tick" x="{x(i):.1f}" y="{height - bottom + 20}" '
+            f'text-anchor="middle">{i + 1}</text>'
         )
     parts.append(
-        f'<text class="axis" x="14" y="{top + (height - top - bottom) / 2:.1f}" '
-        f'transform="rotate(-90 14 {top + (height - top - bottom) / 2:.1f})" '
-        f'text-anchor="middle">GIFT-Eval relative CRPS, better ↑</text>'
+        f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 6}" '
+        'text-anchor="middle">Record</text>'
     )
-    head = f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Record history"'
+    head = f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Record progress"'
     if standalone:
         head += f' xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">'
-        return head + CHART_STYLE + "".join(parts) + "</svg>"
+        return head + STANDALONE + "".join(parts) + "</svg>"
     return head + ">" + "".join(parts) + "</svg>"
 
 
@@ -257,8 +254,6 @@ def loss_chart(result) -> str:
         parts.append(
             f'<polyline class="seed" style="stroke:{color}" points="{points}">'
             f"<title>seed {run['seed']}</title></polyline>"
-        )
-        parts.append(
             f'<text class="tick" style="fill:{color}" x="{width - right}" '
             f'y="{top + 14 + 16 * i}" text-anchor="end">seed {run["seed"]}</text>'
         )
@@ -267,8 +262,10 @@ def loss_chart(result) -> str:
         f'<text class="tick" x="{width - right}" y="{height - 8}" text-anchor="end">'
         f"step {steps:,}</text>"
     )
-    return f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Training loss">' + (
-        "".join(parts) + "</svg>"
+    return (
+        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Training loss">'
+        + "".join(parts)
+        + "</svg>"
     )
 
 
@@ -302,91 +299,79 @@ def fmt(summary, key="geometric_relative_crps") -> str:
     return f"{summary[key]:.4f}" if summary else "—"
 
 
-def detail(number, folder, team, result, previous, is_current) -> str:
-    score = result["gift_eval"]
+def records_table(entries) -> str:
     rows = "".join(
-        f"<tr><td>{run['seed']}</td><td>{fmt(run['gift_eval'])}</td>"
-        f"<td>{fmt(run['gift_eval'], 'geometric_relative_mase')}</td>"
-        f"<td>{fmt(run['gep_val'])}</td><td>{fmt(run['gep_test'])}</td>"
-        f"<td>{run['training_seconds']:.0f} s</td><td>{run['steps']:,}</td>"
-        f'<td class="text">{esc(run["device"] or "CPU")}</td></tr>'
-        for run in result["runs"]
+        f'<tr><td class="n">{i}</td><td class="n">{esc(f.split("_", 1)[0])}</td>'
+        f"<td>{esc(t['description'])}</td>"
+        f'<td class="n">{r["gift_eval"]["crps"]:.4f} ± {r["gift_eval"]["crps_sd"]:.4f}</td>'
+        f'<td class="n">{r["gift_eval"]["mase"]:.4f}</td>'
+        f'<td class="n">{r["gift_eval"]["runs"]}</td><td>{people(t)}</td></tr>'
+        for i, (f, t, r) in enumerate(entries, 1)
     )
-    commit = result["commit"]
-    return f"""<details{" open" if is_current else ""}>
-<summary><span class="title">#{number} {esc(team["description"])}</span>
-<span class="num">{score["crps"]:.4f} ± {score["crps_sd"]:.4f}</span>
-<span class="meta">{esc(folder.split("_", 1)[0])} · {people(team)}</span></summary>
-<div class="body">
-<div class="scroll"><table>
-<tr><th>Seed</th><th>GIFT-Eval CRPS</th><th>MASE</th><th>GEP-Val</th><th>GEP-Test</th>
-<th>Training</th><th>Steps</th><th>GPU</th></tr>{rows}</table></div>
-<div><h3>Change from the previous record</h3>{changes(result, previous)}</div>
-<div><h3>Training loss</h3><div class="chart">{loss_chart(result)}</div></div>
-<p class="links"><a href="{REPO}/tree/main/records/{esc(folder)}">Report</a>
-<a href="{REPO}/blob/main/records/{esc(folder)}/result.json">result.json</a>
-<a href="{REPO}/commit/{esc(commit)}">Commit <span class="mono">{esc(commit[:7])}</span></a></p>
-</div></details>"""
+    return (
+        '<div class="scroll"><table><tr><th>#</th><th>Date</th><th>Change</th>'
+        "<th>GIFT-Eval CRPS</th><th>MASE</th><th>Runs</th><th>Contributors</th></tr>"
+        f"{rows}</table></div>"
+    )
+
+
+def details(entries) -> str:
+    out = []
+    for i, (folder, team, result) in reversed(list(enumerate(entries, 1))):
+        previous = entries[i - 2][2] if i > 1 else None
+        runs = "".join(
+            f'<tr><td class="n">{run["seed"]}</td><td class="n">{fmt(run["gift_eval"])}</td>'
+            f'<td class="n">{fmt(run["gift_eval"], "geometric_relative_mase")}</td>'
+            f'<td class="n">{fmt(run["gep_val"])}</td><td class="n">{fmt(run["gep_test"])}</td>'
+            f'<td class="n">{run["training_seconds"]:.0f} s</td><td>{esc(run["device"])}</td></tr>'
+            for run in result["runs"]
+        )
+        commit = result["commit"]
+        out.append(
+            f"<details><summary>Record {i}: {esc(team['description'])} "
+            f'<span class="dim">({result["gift_eval"]["crps"]:.4f})</span></summary>'
+            '<div class="body"><div class="scroll"><table><tr><th>Seed</th>'
+            "<th>GIFT-Eval CRPS</th><th>MASE</th><th>GEP-Val</th><th>GEP-Test</th>"
+            f"<th>Training</th><th>GPU</th></tr>{runs}</table></div>"
+            f"<p><b>Change from the previous record</b></p>{changes(result, previous)}"
+            f'<p><b>Training loss</b></p><div class="scroll">{loss_chart(result)}</div>'
+            f'<p class="dim"><a href="{REPO}/tree/main/records/{esc(folder)}">Report</a> · '
+            f'<a href="{REPO}/commit/{esc(commit)}">Commit {esc(commit[:7])}</a> · '
+            f"{people(team)}</p></div></details>"
+        )
+    return "".join(out)
 
 
 def page(entries, built: str) -> str:
-    number = len(entries)
-    folder, team, result = entries[-1]
-    score = result["gift_eval"]
-    first = entries[0][2]["gift_eval"]["crps"]
-    gain = 100 * (first - score["crps"]) / first
-    table = "".join(
-        f'<tr class="{"best" if i == number else ""}"><td>{i}</td>'
-        f"<td>{r['gift_eval']['crps']:.4f} ± {r['gift_eval']['crps_sd']:.4f}</td>"
-        f"<td>{r['gift_eval']['mase']:.4f}</td><td>{r['gift_eval']['runs']}</td>"
-        f'<td class="text">{esc(t["description"])}</td><td>{esc(f.split("_", 1)[0])}</td>'
-        f'<td class="text">{people(t)}</td></tr>'
-        for i, (f, t, r) in enumerate(entries, 1)
-    )
-    details = "".join(
-        detail(i, f, t, r, entries[i - 2][2] if i > 1 else None, i == number)
-        for i, (f, t, r) in reversed(list(enumerate(entries, 1)))
-    )
+    buttons = "".join(f'<a href="{url}">{esc(text)}</a>' for text, url in LINKS)
+    setup = "".join(f"<dt>{name}</dt><dd>{esc(value)}</dd>" for name, value in SETUP)
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>nanoTSFM World Record</title>
-<meta name="description" content="The nanoTSFM world record: GIFT-Eval relative CRPS after at
-most one hour of training on one A100.">
+<title>nanoTSFM</title>
+<meta name="description" content="nanoTSFM: training small time-series foundation models in one
+hour on one GPU, scored zero-shot on GIFT-Eval.">
 <link rel="stylesheet" href="{FONTS}">
 <style>{STYLE}</style>
 </head>
 <body>
+<header class="band"><div class="inner">
+<h1><i>nano</i>TSFM</h1>
+<p>Training small time-series foundation models in one hour on one GPU, scored zero-shot on
+GIFT-Eval.</p>
+<nav class="buttons">{buttons}</nav>
+</div></header>
 <main>
-<nav><a class="wm" href="{REPO}" aria-label="nanoTSFM on GitHub"><i>nano</i>TSFM</a>
-<span class="links"><a href="{REPO}/blob/main/docs/rules.md">Rules</a>
-<a href="{REPO}/blob/main/docs/submission.md">Submit a result</a>
-<a href="{REPO}">GitHub</a></span></nav>
-<header class="hero">
-<div><p class="eyebrow">World record #{number} · {esc(folder.split("_", 1)[0])}</p>
-<p class="score">{score["crps"]:.4f}</p>
-<p class="spread">± {score["crps_sd"]:.4f} over {score["runs"]} runs</p>
-<p class="holder">{esc(team["description"])} · {people(team)}</p></div>
-<div><p class="lede">Train a time-series foundation model for at most one hour on one A100,
-then forecast 97 GIFT-Eval tasks it has never seen. The score is CRPS relative to Seasonal
-Naive, averaged geometrically: lower is better, and 1 matches Seasonal Naive. Each record is
-the mean of three or more verified runs.</p>
-<ul class="facts"><li><b>{number}</b><span>records</span></li>
-<li><b>−{gain:.1f}%</b><span>since the baseline</span></li>
-<li><b>{MILESTONES[0][1]:.3f}</b><span>best published model</span></li></ul></div>
-</header>
-<section><h2>Record history</h2><div class="chart">{record_chart(entries)}</div></section>
-<section><h2>Records</h2><div class="scroll"><table>
-<tr><th>#</th><th>GIFT-Eval CRPS</th><th>MASE</th><th>Runs</th><th>Change</th><th>Date</th>
-<th>Contributors</th></tr>{table}</table></div></section>
-<section><h2>Each record</h2>{details}</section>
-<footer><span class="wm small"><i>nano</i>TSFM</span> · built from
-<a href="{REPO}/tree/main/records">records/</a> at
-<span class="mono">{esc(built[:7])}</span>. A new record must beat the last by more than seed
-noise; <a href="{REPO}/blob/main/docs/submission.md">here is how to submit</a>.</footer>
+<figure class="figure"><div class="scroll">{progress_chart(entries)}</div>
+<figcaption>{FOOTNOTE}</figcaption></figure>
+<h2>The task</h2><p>{ABOUT}</p><dl>{setup}</dl>
+<h2>Records</h2><p>{RULE}</p>{records_table(entries)}
+<h2>Record details</h2>{details(entries)}
 </main>
+<footer>Built from <a href="{REPO}/tree/main/records">records/</a> at
+<a href="{REPO}/commit/{esc(built)}">{esc(built[:7])}</a>.</footer>
 </body>
 </html>
 """
@@ -406,7 +391,7 @@ def main():
         ).stdout.strip()
     )
     (out / "index.html").write_text(page(entries, built))
-    (out / "records.svg").write_text(record_chart(entries, standalone=True))
+    (out / "records.svg").write_text(progress_chart(entries, standalone=True))
     print(out / "index.html")
 
 
