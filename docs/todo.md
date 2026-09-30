@@ -15,16 +15,6 @@ Open work, most useful first.
   on a pod: a Runpod template that clones the repository and runs `./run.sh setup`, or a short
   "Run on Runpod" guide.
 
-## Rules
-
-Open questions that [modded-nanogpt](https://github.com/KellerJordan/modded-nanogpt) answers for
-its own record.
-
-- [ ] Keep notable submissions that break a rule or miss the record in a separate list, so good ideas
-  are not lost.
-- [ ] Record rulings on edge cases in one place, a FAQ in the [rules](rules.md).
-- [x] ~~Announce each record in a short post that credits its contributors.~~
-
 ## Data
 
 - [ ] Detect near-duplicate series stored under two sources (for example related PEMS datasets),

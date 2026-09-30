@@ -64,3 +64,15 @@ Everything else is yours to change.
 
 Your fork must be public, and the runs' commit must be pushed. Submissions arrive as pull requests;
 see [submission](submission.md).
+
+## Credit
+
+- **Records:** each new record is announced in a short post that credits its contributors.
+- **Notable submissions:** a submission that misses the record or breaks a rule but tests a useful
+  idea can be listed with its verified score under Notable submissions in the README, so the idea
+  is not lost.
+
+## Rulings
+
+Maintainers decide edge cases and record each ruling here, with its date and pull request, so the
+same question gets the same answer. None yet.
