@@ -29,23 +29,38 @@ LINKS = [
     ("Rules", f"{REPO}/blob/main/docs/rules.md", None),
     ("Submit a result", f"{REPO}/blob/main/docs/submission.md", None),
 ]
-ABOUT = """nanoTSFM is an open benchmark for training small time-series foundation models on a fixed
-budget. A run trains a 3.3M-parameter simplified Toto 2.0 for at most one hour on one A100 80GB,
-using data from GIFT-Eval Pretrain, and is then scored zero-shot on GIFT-Eval."""
-SETUP = [
+# The task as a specification; KaTeX renders the TeX between dollar signs.
+SPEC = [
+    ("Model", r"$3.3 \times 10^{6}$ parameters, Toto 2.0 style (baseline); free to change"),
+    ("Forecast", r"$[B, V, C] \to [B, V, H, 9]$ at $q \in \{0.1, 0.2, \dots, 0.9\}$ (fixed)"),
     (
-        "Model",
-        "3.3M-parameter simplified Toto 2.0; everything but the forecast interface may change",
+        "Data",
+        r"GIFT-Eval Pretrain: GEP-S $3.3 \times 10^{7}$, GEP-M $2.5 \times 10^{8}$, "
+        r"GEP-L $2.1 \times 10^{9}$ points",
     ),
-    ("Data", "GIFT-Eval Pretrain, as the GEP-S, GEP-M and GEP-L slices on Hugging Face"),
-    ("Budget", "At most 3,600 seconds of training per run on one A100 80GB"),
+    ("Budget", r"$t_{\text{train}} \leq 3600\,\text{s}$ per run, $1 \times$ A100 80GB"),
     (
         "Score",
-        "GIFT-Eval CRPS relative to Seasonal Naive, 97 tasks, geometric mean; lower is better",
+        r"$\text{CRPS}_{\text{rel}} = \Big( \prod_{i=1}^{97} \text{CRPS}_i \,/\, "
+        r"\text{CRPS}_i^{\text{SN}} \Big)^{1/97}$, zero-shot, SN = Seasonal Naive; lower is better",
+    ),
+    (
+        "Record",
+        r"$n \geq 3$ seeds; $\bar{s}_{\text{old}} - \bar{s}_{\text{new}} \geq "
+        r"2.33 \times 0.007 \sqrt{1/n + 1/m}$ ($= 0.013$ at $n = m = 3$)",
     ),
 ]
-RULE = """A record is the mean of three or more runs at one commit, retrained by the maintainers. It
-must improve on the previous record by more than seed noise: 0.013 with three runs each."""
+MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css"
+  integrity="sha384-1vdNCNel6Tx/NQa8IR1mGOGKsbGreCkOPfbtPPnUURJ5Tu2PRVfQ/7KLZC+Pi1p1"
+  crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.js"
+  integrity="sha384-ycJ6GAwiS15LoUPipwJOrWTvkUHl/YqELValBwI5I4awP1EeEQJYarj+w85ntcz7"
+  crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/contrib/auto-render.min.js"
+  integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz"
+  crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.spec'),
+  {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false})"></script>"""
+RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
 FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
 the two panels by metric, each small gray dot is one verified run and the orange line is the record,
 the mean of its runs. Records are decided on CRPS."""
@@ -103,8 +118,10 @@ svg [data-tip].on {{ transform: scale(1.6); }}
   background: var(--ink); color: var(--paper); border-radius: 6px; padding: 8px 12px;
   font-size: 13px; line-height: 1.5; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }}
 .tip b {{ display: block; }}
-dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0; }}
+dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0;
+  align-items: baseline; }}
 dt {{ color: var(--muted); }} dd {{ margin: 0; }}
+.spec .katex {{ font-size: 1.05em; }}
 .scroll {{ overflow-x: auto; }}
 table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
 th {{ text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; }}
@@ -636,7 +653,7 @@ def page(entries) -> str:
         + f"{esc(text)}</a>"
         for text, url, logo in LINKS
     )
-    setup = "".join(f"<dt>{name}</dt><dd>{esc(value)}</dd>" for name, value in SETUP)
+    spec = "".join(f"<dt>{name}</dt><dd>{esc(value)}</dd>" for name, value in SPEC)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -646,6 +663,7 @@ def page(entries) -> str:
 <meta name="description" content="nanoTSFM: training a time-series foundation model on one A100,
 targeting GIFT-Eval.">
 <link rel="stylesheet" href="{FONTS}">
+{MATH}
 <style>{STYLE}</style>
 </head>
 <body>
@@ -660,7 +678,7 @@ targeting GIFT-Eval.">
 <figure class="figure narrow">{scatter_chart(entries, narrow=True)}</figure>
 <figure class="figure narrow">{progress_chart(entries, narrow=True)}
 <figcaption>{FOOTNOTE}</figcaption></figure>
-<h2>The task</h2><p>{ABOUT}</p><dl>{setup}</dl>
+<h2>The task</h2><dl class="spec">{spec}</dl>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
 <h2>Record details</h2>{details(entries)}
 </main>
