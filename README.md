@@ -50,7 +50,7 @@ The [rules](docs/rules.md) have the details.
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
 Records are orange, published models are gray, and a point's size shows its parameter count; lower
-left is better. A record is the $\text{mean} \pm \text{sd}$ of three or more verified runs and is
+right is better. A record is the $\text{mean} \pm \text{sd}$ of three or more verified runs and is
 decided on CRPS. See the [record page][site] for every run and [submission](docs/submission.md) for
 how to set a record.
 
