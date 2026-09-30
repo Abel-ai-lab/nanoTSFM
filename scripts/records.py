@@ -44,9 +44,9 @@ SETUP = [
 ]
 RULE = """A record is the mean of three or more runs at one commit, retrained by the maintainers. It
 must improve on the previous record by more than seed noise: 0.013 with three runs each."""
-FOOTNOTE = """Each small gray dot is one verified run; the orange line is the record, the mean of
-its runs. Records are decided on CRPS. Dashed lines and larger gray points mark published models on
-the GIFT-Eval leaderboard."""
+FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
+the two panels by metric, each small gray dot is one verified run and the orange line is the record,
+the mean of its runs. Records are decided on CRPS."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
@@ -321,14 +321,10 @@ def progress_chart(entries, standalone=False) -> str:
 
 
 def scatter_chart(entries, standalone=False) -> str:
-    """CRPS against MASE: records, their runs and published models as points."""
+    """CRPS against MASE: records and published models as points."""
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
-    run_tip, record_tip, model_tip = tips(standalone)
-    points = [
-        (run["gift_eval"]["geometric_relative_mase"], run["gift_eval"]["geometric_relative_crps"])
-        for _, _, r in entries
-        for run in r["runs"]
-    ]
+    _, record_tip, model_tip = tips(standalone)
+    points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
     points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
     lows = [min(p[axis] for p in points) - 0.02 for axis in (0, 1)]
     highs = [max(p[axis] for p in points) + 0.02 for axis in (0, 1)]
@@ -361,13 +357,6 @@ def scatter_chart(entries, standalone=False) -> str:
             f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="5"{model_tip(model, scores)}/>'
             f'<text class="rlabel" x="{cx + 10:.1f}" y="{cy + 4:.1f}">{esc(model)}</text>'
         )
-    for i, (_, _, result) in enumerate(entries):
-        for run in result["runs"]:
-            score = run["gift_eval"]
-            parts.append(
-                f'<circle class="run" cx="{x(score["geometric_relative_mase"]):.1f}" '
-                f'cy="{y(score["geometric_relative_crps"]):.1f}" r="3.5"{run_tip(i + 1, run)}/>'
-            )
     means = [(x(r["gift_eval"]["mase"]), y(r["gift_eval"]["crps"])) for _, _, r in entries]
     path = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy in means)
     parts.append(f'<path class="best" d="M{path}"/>')
@@ -535,8 +524,8 @@ targeting GIFT-Eval.">
 <nav class="buttons">{buttons}</nav>
 </div></header>
 <main>
-<figure class="figure"><div class="scroll">{progress_chart(entries)}</div></figure>
-<figure class="figure"><div class="scroll">{scatter_chart(entries)}</div>
+<figure class="figure"><div class="scroll">{scatter_chart(entries)}</div></figure>
+<figure class="figure"><div class="scroll">{progress_chart(entries)}</div>
 <figcaption>{FOOTNOTE}</figcaption></figure>
 <h2>The task</h2><p>{ABOUT}</p><dl>{setup}</dl>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
