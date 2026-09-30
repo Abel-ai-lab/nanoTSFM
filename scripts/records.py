@@ -14,11 +14,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
 # GIFT-Eval leaderboard at gift-eval commit 9a014e9: zero-shot models without test leakage.
+# (name, MASE, CRPS)
 MILESTONES = [
-    ("TimesFM-3", 0.456),
-    ("Toto-2.0-4m", 0.524),
-    ("TinyCast", 0.545),
-    ("Moirai-small", 0.650),
+    ("TimesFM-3", 0.667, 0.456),
+    ("Toto-2.0-4m", 0.757, 0.524),
+    ("TinyCast", 0.774, 0.545),
+    ("Moirai-small", 0.946, 0.650),
 ]
 # (text, link, Simple Icons logo and its color)
 LINKS = [
@@ -45,7 +46,8 @@ SETUP = [
 RULE = """A record is the mean of three or more runs at one commit, retrained by the maintainers. It
 must improve on the previous record by more than seed noise: 0.013 with three runs each."""
 FOOTNOTE = """Each gray dot is one verified run; the orange line is the record, the mean of its
-runs. Dashed lines mark published models on the GIFT-Eval leaderboard."""
+runs. Records are decided on CRPS. Dashed lines mark published models on the GIFT-Eval
+leaderboard."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
@@ -202,77 +204,91 @@ def people(team: dict) -> str:
 
 
 def progress_chart(entries, standalone=False) -> str:
-    """Every verified run as a gray dot, the record as a step line; lower CRPS is better."""
-    width, height, left, right, top, bottom = 960, 448, 64, 200, 52, 44
-    runs = [run["gift_eval"]["geometric_relative_crps"] for _, _, r in entries for run in r["runs"]]
-    means = [r["gift_eval"]["crps"] for _, _, r in entries]
-    lo = min(runs + [v for _, v in MILESTONES]) - 0.01
-    hi = max(runs) + 0.01
+    """MASE, then CRPS: every verified run as a gray dot and the record as a step line."""
+    width, left, right, top, plot, gap, bottom = 960, 64, 200, 52, 250, 36, 44
+    height = 2 * (top + plot) + gap + bottom
     count = len(entries)
 
     def x(i):
         return left + (width - left - right) * (i + 0.5) / count
 
-    def y(v):
-        return top + (height - top - bottom) * (hi - v) / (hi - lo)
-
     def tip(*lines):
         """Text the page shows when a point is hovered; the README's image has a title instead."""
         return "" if standalone else f' data-tip="{esc(chr(10).join(lines))}"'
 
-    parts = [
-        f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS (lower is better)</text>'
-    ]
-    tick = round(lo * 20) / 20
-    while tick <= hi + 1e-9:
-        if tick >= lo:
+    def panel(metric, column, base):
+        """One metric's plot, with its top edge at base."""
+        name = metric.upper()
+        key = f"geometric_relative_{metric}"
+        runs = [run["gift_eval"][key] for _, _, r in entries for run in r["runs"]]
+        means = [r["gift_eval"][metric] for _, _, r in entries]
+        marks = [(row[0], row[column]) for row in MILESTONES]
+        lo = min(runs + [value for _, value in marks]) - 0.01
+        hi = max(runs) + 0.01
+
+        def y(v):
+            return base + top + plot * (hi - v) / (hi - lo)
+
+        parts = [
+            f'<text class="title" x="{left}" y="{base + 26}">GIFT-Eval relative {name} '
+            "(lower is better)</text>"
+        ]
+        tick = round(lo * 20) / 20
+        while tick <= hi + 1e-9:
+            if tick >= lo:
+                parts.append(
+                    f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
+                    f'y2="{y(tick):.1f}"/><text class="tick" x="{left - 8}" y="{y(tick) + 4:.1f}" '
+                    f'text-anchor="end">{tick:.2f}</text>'
+                )
+            tick = round(tick + 0.05, 2)
+        for label, value in marks:
             parts.append(
-                f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
-                f'y2="{y(tick):.1f}"/><text class="tick" x="{left - 8}" y="{y(tick) + 4:.1f}" '
-                f'text-anchor="end">{tick:.2f}</text>'
+                f'<line class="ref" x1="{left}" x2="{width - right}" y1="{y(value):.1f}" '
+                f'y2="{y(value):.1f}"/><text class="rlabel" x="{width - right + 8}" '
+                f'y="{y(value) + 4:.1f}">{esc(label)} {value:.3f}</text>'
             )
-        tick = round(tick + 0.05, 2)
-    for name, value in MILESTONES:
-        parts.append(
-            f'<line class="ref" x1="{left}" x2="{width - right}" y1="{y(value):.1f}" '
-            f'y2="{y(value):.1f}"/><text class="rlabel" x="{width - right + 8}" '
-            f'y="{y(value) + 4:.1f}">{esc(name)} {value:.3f}</text>'
-        )
-    for i, (_, _, result) in enumerate(entries):
-        for j, run in enumerate(result["runs"]):
-            score = run["gift_eval"]
-            dx = (j - (len(result["runs"]) - 1) / 2) * 7
+        for i, (_, _, result) in enumerate(entries):
+            for j, run in enumerate(result["runs"]):
+                score = run["gift_eval"]
+                dx = (j - (len(result["runs"]) - 1) / 2) * 7
+                hover = tip(
+                    f"Record {i + 1}, seed {run['seed']}",
+                    f"MASE {score['geometric_relative_mase']:.4f}",
+                    f"CRPS {score['geometric_relative_crps']:.4f}",
+                    f"{run['training_seconds']:.0f} s on {run['device']}",
+                )
+                parts.append(
+                    f'<circle class="run" cx="{x(i) + dx:.1f}" cy="{y(score[key]):.1f}" r="3.5"'
+                    f"{hover}/>"
+                )
+        path = f"M{x(0):.1f},{y(means[0]):.1f}"
+        for i in range(1, count):
+            path += f" H{x(i):.1f} V{y(means[i]):.1f}"
+        parts.append(f'<path class="best" d="{path} H{width - right:.1f}"/>')
+        for i, (folder, team, result) in enumerate(entries):
+            label = team["description"] if i else "baseline"
+            score = result["gift_eval"]
             hover = tip(
-                f"Record {i + 1}, seed {run['seed']}",
-                f"CRPS {score['geometric_relative_crps']:.4f}",
-                f"MASE {score['geometric_relative_mase']:.4f}",
-                f"{run['training_seconds']:.0f} s on {run['device']}",
+                f"Record {i + 1} · {folder.split('_', 1)[0]}",
+                team["description"],
+                f"MASE {score['mase']:.4f} ± {score['mase_sd']:.4f}",
+                f"CRPS {score['crps']:.4f} ± {score['crps_sd']:.4f}",
+                f"{score['runs']} runs · " + ", ".join(f"@{m['github']}" for m in team["members"]),
             )
+            mean = f"{score[metric]:.4f} ± {score[f'{metric}_sd']:.4f} over {score['runs']} runs"
             parts.append(
-                f'<circle class="run" cx="{x(i) + dx:.1f}" '
-                f'cy="{y(score["geometric_relative_crps"]):.1f}" r="3.5"{hover}/>'
+                f'<circle class="rec" cx="{x(i):.1f}" cy="{y(means[i]):.1f}" r="5"{hover}>'
+                + f"<title>Record {i + 1}: {name} {mean}</title>" * standalone
+                + "</circle>"
+                f'<text class="change" transform="translate({x(i) + 8:.1f},{y(means[i]) - 10:.1f}) '
+                f'rotate(-28)">{esc(label)}</text>'
             )
-    path = f"M{x(0):.1f},{y(means[0]):.1f}"
-    for i in range(1, count):
-        path += f" H{x(i):.1f} V{y(means[i]):.1f}"
-    parts.append(f'<path class="best" d="{path} H{width - right:.1f}"/>')
-    for i, (folder, team, result) in enumerate(entries):
-        label = team["description"] if i else "baseline"
-        score = result["gift_eval"]
-        mean = f"{score['crps']:.4f} ± {score['crps_sd']:.4f} over {score['runs']} runs"
-        hover = tip(
-            f"Record {i + 1} · {folder.split('_', 1)[0]}",
-            team["description"],
-            f"CRPS {mean}",
-            f"MASE {score['mase']:.4f}",
-            ", ".join(f"@{m['github']}" for m in team["members"]),
-        )
+        return parts
+
+    parts = panel("mase", 1, 0) + panel("crps", 2, top + plot + gap)
+    for i in range(count):
         parts.append(
-            f'<circle class="rec" cx="{x(i):.1f}" cy="{y(means[i]):.1f}" r="5"{hover}>'
-            + f"<title>Record {i + 1}: {mean}</title>" * standalone
-            + "</circle>"
-            f'<text class="change" transform="translate({x(i) + 8:.1f},{y(means[i]) - 10:.1f}) '
-            f'rotate(-28)">{esc(label)}</text>'
             f'<text class="tick" x="{x(i):.1f}" y="{height - bottom + 20}" '
             f'text-anchor="middle">{i + 1}</text>'
         )
