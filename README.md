@@ -5,7 +5,7 @@
 [![Python 3.13][python-badge]][python]
 [![License: MIT][license-badge]](LICENSE)
 
-**Train a time-series foundation model on one GPU in two minutes, then make it forecast better.**
+**Hill-climbing GIFT-Eval with one A100 and one hour.**
 
 nanoTSFM is an open challenge built on a 3.3M-parameter simplified [Toto 2.0][toto2]. It trains on
 a 250M-point slice of [GIFT-Eval Pretrain][gep] and is scored zero-shot on [GIFT-Eval][gift], so
