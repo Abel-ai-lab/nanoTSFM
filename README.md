@@ -47,14 +47,17 @@ The [rules](docs/rules.md) have the details.
 | 1 | $0.6699 \pm 0.0073$ | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 | 2 | $0.6334 \pm 0.0033$ | Weight every series equally | 2026-09-29 | [2026-09-29_Shu-Wan](records/2026-09-29_Shu-Wan/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
-[![GIFT-Eval record history][chart]][site]
+[![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
-Each record is the $\text{mean} \pm \text{sd}$ of three or more verified runs; the [record page][site] shows every
-run. A new record must beat the last by
-more than seed noise; the [submission](docs/submission.md) page has the rule and the steps, and
-[`records/`](records/) has every record's report. Dotted lines mark published models on the
-GIFT-Eval leaderboard, including Toto-2.0-4m, the same design trained far longer on far more data.
-The baseline sits about 114th of the leaderboard's 131 models.
+The figure places each record by its two GIFT-Eval scores, relative MASE and relative CRPS; lower
+left is better. Gray points are published models on the GIFT-Eval leaderboard, including
+Toto-2.0-4m, the same design trained far longer on far more data. The baseline sits about 114th of
+the leaderboard's 131 models.
+
+Each record is the $\text{mean} \pm \text{sd}$ of three or more verified runs, and records are
+decided on CRPS. A new record must beat the last by more than seed noise; the
+[submission](docs/submission.md) page has the rule and the steps, and [`records/`](records/) has
+every record's report. The [record page][site] shows each metric by record and every run.
 
 ## Data
 
@@ -144,7 +147,7 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 [data-badge]: https://img.shields.io/badge/data-nanoTSFM--pretrain-FFD21E?logo=huggingface
 [record-badge]: https://img.shields.io/badge/world%20record-record%20page-D9622B
 [site]: https://abel-ai-lab.github.io/nanoTSFM/
-[chart]: https://abel-ai-lab.github.io/nanoTSFM/records.svg
+[chart]: https://abel-ai-lab.github.io/nanoTSFM/scatter.svg
 [data]: https://huggingface.co/datasets/abel-lab/nanoTSFM-pretrain
 [gep]: https://huggingface.co/datasets/Salesforce/GiftEvalPretrain
 [toto2]: https://arxiv.org/abs/2605.20119
