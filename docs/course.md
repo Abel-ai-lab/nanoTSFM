@@ -53,11 +53,11 @@ with an ASU Research Computing account can also use the Sol cluster at no cost.
    `nanoTSFM/runpod.ipynb`, select **nanoTSFM (Python 3.13)**, and run the cells in order.
 
 The template clones a pinned revision of this repository into `/workspace/nanoTSFM`, runs
-`./run.sh setup` with `TORCH=cuda`, and registers the notebook kernel. First boot downloads the
-Python and CUDA dependencies before Jupyter starts. Restarting preserves your checkout and runs
-setup again. The notebook runs the toy check, downloads the data, trains the unchanged baseline,
-plots a forecast, and prints aggregate relative CRPS and MASE for GEP-Val and the 97-task GIFT-Eval
-suite.
+`./run.sh setup` with Python 3.13.15 and `TORCH=cuda`, and registers the notebook kernel. First boot
+downloads Python and CUDA dependencies before Jupyter starts. Restarting preserves your checkout
+and runs setup again. The notebook runs the toy check, downloads the data, trains the unchanged
+baseline, plots a forecast, and prints aggregate relative CRPS and MASE for GEP-Val and the 97-task
+GIFT-Eval suite.
 
 For a terminal workflow, open Jupyter's terminal:
 
@@ -68,6 +68,26 @@ cd /workspace/nanoTSFM
 ./run.sh train baseline
 ./run.sh eval baseline
 ```
+
+Measured September 30, 2026 on one Secure Cloud A100 80GB PCIe in EU-RO-1, with 16 allocated
+vCPUs, Python 3.13.15 and PyTorch 2.11.0+cu128, at \$1.59/hour:
+
+| Command | Wall time | Compute cost |
+| --- | ---: | ---: |
+| `./run.sh toy` | 151 s | \$0.067 |
+| `./run.sh data` | 99 s | \$0.044 |
+| `./run.sh train baseline` | 283 s | \$0.125 |
+| `./run.sh eval baseline` | 362 s | \$0.160 |
+
+The four commands took 14.9 minutes and cost about **\$0.40 in compute**, after environment setup.
+Costs are measured wall seconds times \$1.59/3,600, excluding storage, pod startup and idle time;
+they are not an invoice total. Prices and download speeds vary. These first-run timings include
+imports and dataset downloads; training includes GEP-Val, while the 5,000 GPU training steps alone
+took 136.7 seconds. Allow several extra minutes for the initial Python/CUDA environment install.
+
+The run used the unchanged baseline at commit `e48259a`, seed 7: GIFT-Eval relative CRPS **0.6642**
+and MASE **0.9540** over all 97 tasks; GEP-Val CRPS **0.6216** over 129 tasks. The notebook reproduced
+the same scores on a second A100 pod. This is one seed, not a three-seed record submission.
 
 Download `runs/baseline` before terminating the pod: termination deletes its files. **Terminate the
 pod when finished** to end GPU and pod-storage charges. Stopping retains paid storage. Setup,

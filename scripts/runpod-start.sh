@@ -13,7 +13,7 @@ export UV_INSTALL_DIR=/workspace/bin
 export UV_NO_MODIFY_PATH=1
 export PATH="$UV_INSTALL_DIR:$PATH"
 
-# The image's uv and Python predate the locked PyTorch build.
+# Pin a managed Python that can import the locked PyTorch build.
 curl -LsSf https://astral.sh/uv/0.12.21/install.sh | sh
 
 ./run.sh setup
