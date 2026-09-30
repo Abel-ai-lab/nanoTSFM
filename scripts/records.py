@@ -29,25 +29,17 @@ LINKS = [
     ("Rules", f"{REPO}/blob/main/docs/rules.md", None),
     ("Submit a result", f"{REPO}/blob/main/docs/submission.md", None),
 ]
-# The task as a specification; KaTeX renders the TeX between dollar signs.
+# The task as a short specification; KaTeX renders the TeX between dollar signs.
+DOCS = f"{REPO}/blob/main/docs"
 SPEC = [
-    ("Model", r"$3.3 \times 10^{6}$ parameters, Toto 2.0 style (baseline); free to change"),
-    ("Forecast", r"$[B, V, C] \to [B, V, H, 9]$ at $q \in \{0.1, 0.2, \dots, 0.9\}$ (fixed)"),
-    (
-        "Data",
-        r"GIFT-Eval Pretrain: GEP-S $3.3 \times 10^{7}$, GEP-M $2.5 \times 10^{8}$, "
-        r"GEP-L $2.1 \times 10^{9}$ points",
-    ),
-    ("Budget", r"$t_{\text{train}} \leq 3600\,\text{s}$ per run, $1 \times$ A100 80GB"),
-    (
-        "Score",
-        r"$\text{CRPS}_{\text{rel}} = \Big( \prod_{i=1}^{97} \text{CRPS}_i \,/\, "
-        r"\text{CRPS}_i^{\text{SN}} \Big)^{1/97}$, zero-shot, SN = Seasonal Naive; lower is better",
-    ),
+    ("Model", r"$3.3 \times 10^{6}$ parameters in the baseline; free to change"),
+    ("Data", f'<a href="{DOCS}/data.md">GIFT-Eval Pretrain</a>'),
+    ("Budget", r"$\leq 3600\,\text{s}$ of training on $1 \times$ A100 80GB"),
+    ("Score", f'<a href="{DOCS}/rules.md#score">CRPS</a> on GIFT-Eval, zero-shot; lower is better'),
     (
         "Record",
-        r"$n \geq 3$ seeds; $\bar{s}_{\text{old}} - \bar{s}_{\text{new}} \geq "
-        r"2.33 \times 0.007 \sqrt{1/n + 1/m}$ ($= 0.013$ at $n = m = 3$)",
+        r"$\geq 3$ seeds, $\geq 0.013$ below the last record "
+        f'(<a href="{DOCS}/submission.md#the-record-rule">rule</a>)',
     ),
 ]
 MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css"
@@ -653,7 +645,7 @@ def page(entries) -> str:
         + f"{esc(text)}</a>"
         for text, url, logo in LINKS
     )
-    spec = "".join(f"<dt>{name}</dt><dd>{esc(value)}</dd>" for name, value in SPEC)
+    spec = "".join(f"<dt>{name}</dt><dd>{value}</dd>" for name, value in SPEC)
     return f"""<!doctype html>
 <html lang="en">
 <head>
