@@ -2,9 +2,7 @@
 
 [![Data on Hugging Face][data-badge]][data]
 [![World record][record-badge]][site]
-[![Python 3.13][python-badge]][uv]
-[![PyTorch][torch-badge]][torch]
-[![uv][uv-badge]][uv]
+[![Python 3.13][python-badge]][python]
 [![License: MIT][license-badge]](LICENSE)
 
 **Train a time-series foundation model on one GPU in two minutes, then make it forecast better.**
@@ -129,10 +127,7 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 [nanotabicl](https://github.com/soda-inria/nanotabicl).
 
 [python-badge]: https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white
-[torch-badge]: https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white
-[torch]: https://pytorch.org
-[uv-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json
-[uv]: https://github.com/astral-sh/uv
+[python]: https://www.python.org/downloads/
 [license-badge]: https://img.shields.io/badge/license-MIT-2E7A58
 [gift]: https://huggingface.co/spaces/Salesforce/GIFT-Eval
 [data-badge]: https://img.shields.io/badge/data-nanoTSFM--pretrain-FFD21E?logo=huggingface
