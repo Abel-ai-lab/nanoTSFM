@@ -6,8 +6,6 @@ python scripts/records.py --table
 
 import html
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -107,8 +105,6 @@ summary {{ cursor: pointer; color: var(--ink); }}
 .body {{ padding-top: 10px; display: grid; gap: 14px; }}
 .body p {{ margin: 0; }}
 .changes {{ margin: 0; padding-left: 18px; font: 14px "IBM Plex Mono", Menlo, monospace; }}
-footer {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 0 40px;
-  color: var(--muted); font-size: 13px; }}
 @media (max-width: 600px) {{ .band h1 {{ font-size: 36px; }} dl {{ grid-template-columns: 1fr; }} }}
 """
 # The README shows the figure as an image, outside the page's styles.
@@ -346,7 +342,7 @@ def details(entries) -> str:
     return "".join(out)
 
 
-def page(entries, built: str) -> str:
+def page(entries) -> str:
     buttons = "".join(
         f'<a href="{url}">'
         + (
@@ -363,16 +359,15 @@ def page(entries, built: str) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>nanoTSFM</title>
-<meta name="description" content="nanoTSFM: training small time-series foundation models in one
-hour on one GPU, scored zero-shot on GIFT-Eval.">
+<meta name="description" content="nanoTSFM: training a time-series foundation model on one A100,
+grinding GIFT-Eval.">
 <link rel="stylesheet" href="{FONTS}">
 <style>{STYLE}</style>
 </head>
 <body>
 <header class="band"><div class="inner">
 <h1><i>nano</i>TSFM</h1>
-<p>Training small time-series foundation models in one hour on one GPU, scored zero-shot on
-GIFT-Eval.</p>
+<p>Training a time-series foundation model on one A100, grinding GIFT-Eval.</p>
 <nav class="buttons">{buttons}</nav>
 </div></header>
 <main>
@@ -382,8 +377,6 @@ GIFT-Eval.</p>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
 <h2>Record details</h2>{details(entries)}
 </main>
-<footer>Built from <a href="{REPO}/tree/main/records">records/</a> at
-<a href="{REPO}/commit/{esc(built)}">{esc(built[:7])}</a>.</footer>
 </body>
 </html>
 """
@@ -396,13 +389,7 @@ def main():
         return
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
     out.mkdir(parents=True, exist_ok=True)
-    built = (
-        os.environ.get("GITHUB_SHA")
-        or subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True
-        ).stdout.strip()
-    )
-    (out / "index.html").write_text(page(entries, built))
+    (out / "index.html").write_text(page(entries))
     (out / "records.svg").write_text(progress_chart(entries, standalone=True))
     print(out / "index.html")
 
