@@ -14,9 +14,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
-# GIFT-Eval leaderboard at gift-eval commit 9a014e9: zero-shot models without test leakage.
-# Parameter counts are the safetensors totals on each model's Hugging Face page.
+# GIFT-Eval leaderboard at gift-eval commit 9a014e9: models without test leakage. Parameter counts
+# are the safetensors totals on each model's Hugging Face page. The leaderboard's best entry is an
+# agentic system of several models, with no published size; the figures draw it as a diamond.
 MILESTONES = {
+    "EXAONE-Forecast-Agent": {"mase": 0.610, "crps": 0.419, "parameters": None, "short": "EXAONE"},
     "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
     "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524, "parameters": 4_144_448},
     "TinyCast": {"mase": 0.774, "crps": 0.545, "parameters": 146_505},
@@ -68,9 +70,10 @@ MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1
   crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.spec'),
   {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false})"></script>"""
 RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
-FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
-the two panels by metric, each small gray dot is one verified run and the orange line is the record,
-the mean of its runs. Records are decided on CRPS."""
+FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard; the
+diamond is EXAONE-Forecast-Agent, the leaderboard's best entry, an agentic system. In the two
+panels by metric, each small gray dot is one verified run and the orange line is the record, the
+mean of its runs. Records are decided on CRPS."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
@@ -336,6 +339,8 @@ def tips(standalone):
 
     def model(name, scores):
         lines = (f"MASE {scores['mase']:.3f}", f"CRPS {scores['crps']:.3f}")
+        if scores["parameters"] is None:
+            return tip(name, *lines, "The leaderboard's best entry, an agentic system")
         return tip(name, *lines, f"{size(scores['parameters'])} parameters")
 
     return run, record, model
@@ -423,7 +428,9 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         key = f"geometric_relative_{metric}"
         runs = [run["gift_eval"][key] for _, _, r in entries for run in r["runs"]]
         means = [r["gift_eval"][metric] for _, _, r in entries]
-        marks = [(model, scores[metric]) for model, scores in MILESTONES.items()]
+        marks = [
+            (scores.get("short", model), scores[metric]) for model, scores in MILESTONES.items()
+        ]
         lo = min(runs + [value for _, value in marks]) - 0.01
         hi = max(runs) + 0.01
         xs = [left + (right - left) * (i + 0.5) / count for i in range(count)]
@@ -459,19 +466,30 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         for i in range(1, count):
             path += f" H{xs[i]:.1f} V{ys[means[i]]:.1f}"
         parts.append(f'<path class="best" d="{path} H{right}"/>')
+        # Labels keep clear of the points and of the step line, inside the plot.
+        taken = [(xs[i] - 6, ys[m] - 6, xs[i] + 6, ys[m] + 6) for i, m in enumerate(means)]
+        corners = [(xs[0], ys[means[0]])]
+        for i in range(1, count):
+            corners += [(xs[i], ys[means[i - 1]]), (xs[i], ys[means[i]])]
+        corners.append((right, ys[means[-1]]))
+        for (ax, ay), (bx, by) in zip(corners, corners[1:], strict=False):
+            steps = max(1, int(math.hypot(bx - ax, by - ay) / 6))
+            for k in range(steps + 1):
+                px, py = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
+                taken.append((px - 3, py - 3, px + 3, py + 3))
+        frame = (left, down + top - 30, right, down + block - bottom)
         for i, (folder, team, result) in enumerate(entries):
             label = team["description"] if i else "baseline"
             y = ys[means[i]]
             parts.append(
                 f'<circle class="rec" cx="{xs[i]:.1f}" cy="{y:.1f}" r="5"'
                 f"{record_tip(i + 1, folder, team, result)}/>"
-                # The narrow layout has no room for the change; the record's number stands for it.
-                + f'<text class="change" transform="translate({xs[i] + 8:.1f},{y - 10:.1f}) '
-                f'rotate(-28)">{esc(label)}</text>'
-                * (not narrow)
-                + f'<text class="tick" x="{xs[i]:.1f}" y="{down + block - bottom + 20}" '
+                f'<text class="tick" x="{xs[i]:.1f}" y="{down + block - bottom + 20}" '
                 f'text-anchor="middle">{i + 1}</text>'
             )
+            if not narrow:  # the narrow layout has no room; the record's number stands for it
+                where = place(xs[i], y, 5, label, taken, frame)
+                parts.append(f'<text class="change" {where}>{esc(label)}</text>')
         parts.append(
             f'<text class="sub" x="{(left + right) / 2:.1f}" y="{down + block - 6}" '
             'text-anchor="middle">Record</text>'
@@ -565,7 +583,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         )
         start += 2 * r + 5 + 7 * len(label) + 18
     models = [
-        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"]), name, scores)
+        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"] or 1e7), name, scores)
         for name, scores in MILESTONES.items()
     ]
     records = [
@@ -607,11 +625,19 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             f'<text class="change" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
     for cx, cy, r, name, scores in models:
-        label = name if narrow else f"{name} · {size(scores['parameters'])}"
-        parts.append(
-            f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
-            f"{model_tip(name, scores)}/>"
-        )
+        short = scores.get("short", name)
+        if scores["parameters"] is None:  # an agentic system: a diamond, with no size
+            label = short if narrow else f"{name} · agentic"
+            parts.append(
+                f'<path class="model" d="M{cx:.1f},{cy - r:.1f} L{cx + r:.1f},{cy:.1f} '
+                f'L{cx:.1f},{cy + r:.1f} L{cx - r:.1f},{cy:.1f}Z"{model_tip(name, scores)}/>'
+            )
+        else:
+            label = short if narrow else f"{name} · {size(scores['parameters'])}"
+            parts.append(
+                f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
+                f"{model_tip(name, scores)}/>"
+            )
         labels.append(
             f'<text class="rlabel" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
