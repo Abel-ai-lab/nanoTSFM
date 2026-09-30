@@ -35,7 +35,7 @@ seen; the best verified score holds the record."""
 # The task as a short specification; KaTeX renders the TeX between dollar signs.
 DOCS = f"{REPO}/blob/main/docs"
 SPEC = [
-    ("Model", r"$3.3 \times 10^{6}$ parameters in the baseline; free to change"),
+    ("Model", "3.3M parameters in the baseline; free to change"),
     ("Data", f'<a href="{DOCS}/data.md">GIFT-Eval Pretrain</a>'),
     ("Budget", r"$\leq 3600\,\text{s}$ of training on $1 \times$ A100 80GB"),
     ("Score", f'<a href="{DOCS}/rules.md#score">CRPS</a> on GIFT-Eval, zero-shot; lower is better'),
