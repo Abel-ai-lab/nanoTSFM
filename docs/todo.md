@@ -11,7 +11,6 @@ Open work, most useful first.
 
 ## Launch
 
-- [ ] Announce the internship's partner and terms on the [course](course.md) page.
 - [ ] Test the Runpod credit code end to end, and give participants a one-step way to run nanoTSFM
   on a pod: a Runpod template that clones the repository and runs `./run.sh setup`, or a short
   "Run on Runpod" guide.
