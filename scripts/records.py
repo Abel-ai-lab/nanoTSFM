@@ -6,6 +6,7 @@ python scripts/records.py --table
 
 import html
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -14,11 +15,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
 # GIFT-Eval leaderboard at gift-eval commit 9a014e9: zero-shot models without test leakage.
+# Parameter counts are the safetensors totals on each model's Hugging Face page.
 MILESTONES = {
-    "TimesFM-3": {"mase": 0.667, "crps": 0.456},
-    "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524},
-    "TinyCast": {"mase": 0.774, "crps": 0.545},
-    "Moirai-small": {"mase": 0.946, "crps": 0.650},
+    "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
+    "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524, "parameters": 4_144_448},
+    "TinyCast": {"mase": 0.774, "crps": 0.545, "parameters": 146_505},
+    "Moirai-small": {"mase": 0.946, "crps": 0.650, "parameters": 13_827_528},
 }
 # (text, link, Simple Icons logo and its color)
 LINKS = [
@@ -89,6 +91,7 @@ svg .ref {{ stroke: var(--milestone); stroke-dasharray: 5 5; }}
 svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
 svg .run {{ fill: var(--run); }}
 svg .model {{ fill: var(--milestone); }}
+svg .key {{ fill: var(--paper); stroke: var(--milestone); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
 svg .rec {{ fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }}
 svg .change {{ fill: var(--accent); font: 12.5px "IBM Plex Sans", Arial, sans-serif; }}
@@ -123,7 +126,7 @@ STANDALONE = """<style>
 .tick { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
 .grid { stroke: #E1E4E0; } .ref { stroke: #8C99A6; stroke-dasharray: 5 5; }
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
-.model { fill: #8C99A6; }
+.model { fill: #8C99A6; } .key { fill: #FFFFFF; stroke: #8C99A6; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
 .change { fill: #D9622B; font: 12.5px Arial, sans-serif; }
@@ -153,11 +156,11 @@ function show(point) {
   tip.style.top = Math.max(8, Math.min(innerHeight - tip.offsetHeight - 8, top)) + "px";
 }
 function nearest(event) {
-  let best = null, reach = 14;
+  let best = null, reach = 10;
   for (const point of points) {
     const box = point.getBoundingClientRect();
     const x = box.left + box.width / 2 - event.clientX;
-    const away = Math.hypot(x, box.top + box.height / 2 - event.clientY);
+    const away = Math.hypot(x, box.top + box.height / 2 - event.clientY) - box.width / 2;
     if (away < reach) [best, reach] = [point, away];
   }
   show(best);
@@ -200,6 +203,20 @@ def esc(text) -> str:
     return html.escape(str(text))
 
 
+def size(parameters: int) -> str:
+    """A parameter count in short form: 147K, 3.3M, 331M."""
+    for unit, scale in (("B", 1e9), ("M", 1e6), ("K", 1e3)):
+        if parameters >= scale:
+            value = parameters / scale
+            return f"{value:.0f}{unit}" if value >= 10 else f"{value:.1f}".removesuffix(".0") + unit
+    return str(parameters)
+
+
+def radius(parameters: int) -> float:
+    """Point radius in the overall plot, growing with the logarithm of the parameter count."""
+    return max(3.0, 3 * math.log10(parameters) - 12)
+
+
 def people(team: dict) -> str:
     return ", ".join(
         f'<a href="https://github.com/{esc(m["github"])}">@{esc(m["github"])}</a>'
@@ -237,12 +254,13 @@ def tips(standalone):
             team["description"],
             f"MASE {score['mase']:.4f} ± {score['mase_sd']:.4f}",
             f"CRPS {score['crps']:.4f} ± {score['crps_sd']:.4f}",
-            f"{score['runs']} runs · " + ", ".join(f"@{m['github']}" for m in team["members"]),
+            f"{size(result['parameters'])} parameters · {score['runs']} runs",
+            ", ".join(f"@{m['github']}" for m in team["members"]),
         )
 
     def model(name, scores):
         lines = (f"MASE {scores['mase']:.3f}", f"CRPS {scores['crps']:.3f}")
-        return tip(name, *lines, "GIFT-Eval leaderboard")
+        return tip(name, *lines, f"{size(scores['parameters'])} parameters")
 
     return run, record, model
 
@@ -321,7 +339,7 @@ def progress_chart(entries, standalone=False) -> str:
 
 
 def scatter_chart(entries, standalone=False) -> str:
-    """CRPS against MASE: records and published models as points."""
+    """CRPS against MASE: records and published models as points sized by parameter count."""
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
     _, record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
@@ -352,23 +370,39 @@ def scatter_chart(entries, standalone=False) -> str:
             f'y="{height - bottom + 20}" text-anchor="middle">{tick:.2f}</text>'
         )
     for model, scores in MILESTONES.items():
-        cx, cy = x(scores["mase"]), y(scores["crps"])
+        cx, cy, r = x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"])
         parts.append(
-            f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="5"{model_tip(model, scores)}/>'
-            f'<text class="rlabel" x="{cx + 10:.1f}" y="{cy + 4:.1f}">{esc(model)}</text>'
+            f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
+            f"{model_tip(model, scores)}/>"
+            f'<text class="rlabel" x="{cx + r + 5:.1f}" y="{cy + 4:.1f}">{esc(model)} · '
+            f"{size(scores['parameters'])}</text>"
         )
     means = [(x(r["gift_eval"]["mase"]), y(r["gift_eval"]["crps"])) for _, _, r in entries]
     path = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy in means)
     parts.append(f'<path class="best" d="M{path}"/>')
     for i, (folder, team, result) in enumerate(entries):
         label = team["description"] if i else "baseline"
-        cx, cy = means[i]
+        (cx, cy), r = means[i], radius(result["parameters"])
         parts.append(
-            f'<circle class="rec" cx="{cx:.1f}" cy="{cy:.1f}" r="5"'
+            f'<circle class="rec" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
             f"{record_tip(i + 1, folder, team, result)}/>"
-            f'<text class="change" x="{cx - 10:.1f}" y="{cy - 8:.1f}" text-anchor="end">'
-            f"{i + 1}. {esc(label)}</text>"
+            f'<text class="change" x="{cx - r - 5:.1f}" y="{cy - 8:.1f}" text-anchor="end">'
+            f"{i + 1}. {esc(label)} · {size(result['parameters'])}</text>"
         )
+    # The size legend sits in the corner no model reaches: high MASE with low CRPS.
+    edge, base = width - right - 28, height - bottom - 24
+    for k, parameters in enumerate((1_000_000_000, 10_000_000, 100_000)):
+        r = radius(parameters)
+        cx = edge - 30 - 66 * k
+        parts.append(
+            f'<circle class="key" cx="{cx:.1f}" cy="{base - r:.1f}" r="{r:.1f}"/>'
+            f'<text class="rlabel" x="{cx + r + 4:.1f}" y="{base - r + 4:.1f}">'
+            f"{size(parameters)}</text>"
+        )
+    parts.append(
+        f'<text class="rlabel" x="{edge}" y="{base - 40}" text-anchor="end">'
+        "Point size: parameters (log scale)</text>"
+    )
     middle = top + (height - top - bottom) / 2
     parts.append(
         f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 8}" '
