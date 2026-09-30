@@ -22,11 +22,12 @@ MILESTONES = [
     ("TinyCast", 0.545),
     ("Moirai-small", 0.650),
 ]
+# (text, link, Simple Icons logo and its color)
 LINKS = [
-    ("Code", REPO),
-    ("Data", "https://huggingface.co/datasets/abel-lab/nanoTSFM-pretrain"),
-    ("Rules", f"{REPO}/blob/main/docs/rules.md"),
-    ("Submit a result", f"{REPO}/blob/main/docs/submission.md"),
+    ("Code", REPO, "github/F4F5F1"),
+    ("Data", "https://huggingface.co/datasets/abel-lab/nanoTSFM-pretrain", "huggingface/FFD21E"),
+    ("Rules", f"{REPO}/blob/main/docs/rules.md", None),
+    ("Submit a result", f"{REPO}/blob/main/docs/submission.md", None),
 ]
 ABOUT = """nanoTSFM is an open benchmark for training small time-series foundation models on a fixed
 budget. A run trains a 3.3M-parameter simplified Toto 2.0 for at most one hour on one A100 80GB,
@@ -69,8 +70,9 @@ a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outl
 .band h1 {{ margin: 0; color: #F4F5F1; font-size: 44px; font-weight: 600; line-height: 1.1; }}
 .band p {{ margin: 12px 0 24px; font-size: 18px; max-width: 60ch; }}
 .buttons {{ display: flex; flex-wrap: wrap; gap: 10px; }}
-.buttons a {{ color: #F4F5F1; border: 1px solid #3A4A5A; border-radius: 6px; padding: 7px 14px;
-  text-decoration: none; font-size: 14px; }}
+.buttons a {{ display: inline-flex; align-items: center; gap: 8px; color: #F4F5F1;
+  border: 1px solid #3A4A5A; border-radius: 6px; padding: 7px 14px; text-decoration: none;
+  font-size: 14px; }}
 .buttons a:hover {{ border-color: #C9D3DC; }}
 main {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 64px; }}
 h2 {{ color: var(--ink); font-size: 22px; font-weight: 600; margin: 44px 0 12px; }}
@@ -345,7 +347,15 @@ def details(entries) -> str:
 
 
 def page(entries, built: str) -> str:
-    buttons = "".join(f'<a href="{url}">{esc(text)}</a>' for text, url in LINKS)
+    buttons = "".join(
+        f'<a href="{url}">'
+        + (
+            f'<img src="https://cdn.simpleicons.org/{logo}" alt="" width="16" height="16">'
+            * bool(logo)
+        )
+        + f"{esc(text)}</a>"
+        for text, url, logo in LINKS
+    )
     setup = "".join(f"<dt>{name}</dt><dd>{esc(value)}</dd>" for name, value in SETUP)
     return f"""<!doctype html>
 <html lang="en">
