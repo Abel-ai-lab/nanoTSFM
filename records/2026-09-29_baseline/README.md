@@ -17,6 +17,6 @@ on GEP-M with one A100 80GB. The record holds seeds 7 (the config's default), 1 
 | 7 | 0.662 | 0.962 | 0.628 | 0.623 | 113 s |
 | 1 | 0.676 | 0.971 | 0.630 | 0.618 | 107 s |
 | 2 | 0.671 | 0.967 | 0.628 | 0.629 | 106 s |
-| Mean $\pm$ sd | 0.670 $\pm$ 0.007 | 0.967 $\pm$ 0.004 | 0.628 | 0.623 | 109 s |
+| $\text{Mean} \pm \text{sd}$ | $0.670 \pm 0.007$ | $0.967 \pm 0.004$ | 0.628 | 0.623 | 109 s |
 
 Seeds move GIFT-Eval by about $\pm 0.007$, so smaller differences are noise.

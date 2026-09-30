@@ -40,13 +40,13 @@ weights every series equally to test whether that middle ground matters.
 
 ## Results
 
-Mean $\pm$ sd over seeds 7, 1 and 2; lower is better.
+$\text{Mean} \pm \text{sd}$ over seeds 7, 1 and 2; lower is better.
 
 | `source_power` | GIFT-Eval CRPS | GIFT-Eval MASE | GEP-Val | GEP-Test | Training |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 0 (baseline) | 0.670 $\pm$ 0.007 | 0.967 $\pm$ 0.004 | 0.628 | 0.623 | 109 s |
-| 0.5 | 0.657 $\pm$ 0.005 | 0.945 $\pm$ 0.003 | 0.616 | 0.612 | 93 s |
-| 1 (this record) | **0.633 $\pm$ 0.003** | **0.906 $\pm$ 0.002** | 0.613 | 0.608 | 81 s |
+| 0 (baseline) | $0.670 \pm 0.007$ | $0.967 \pm 0.004$ | 0.628 | 0.623 | 109 s |
+| 0.5 | $0.657 \pm 0.005$ | $0.945 \pm 0.003$ | 0.616 | 0.612 | 93 s |
+| 1 (this record) | $\mathbf{0.633 \pm 0.003}$ | $\mathbf{0.906 \pm 0.002}$ | 0.613 | 0.608 | 81 s |
 
 | Seed | $p = 0$ | $p = 0.5$ | $p = 1$ |
 | --- | ---: | ---: | ---: |

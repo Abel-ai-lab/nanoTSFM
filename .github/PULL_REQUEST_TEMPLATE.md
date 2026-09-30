@@ -6,11 +6,11 @@ Title a submission "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
 
 - Record folder: `records/<YYYY-MM-DD>_<name>/`
 - Runs' commit, from `result.json`:
-- Mean GIFT-Eval relative CRPS $\pm$ sd ($n$ runs), from `./run.sh submit`:
+- GIFT-Eval relative CRPS, $\text{mean} \pm \text{sd}$ over $n$ runs, from `./run.sh submit`:
 
 **What changed and why**, in two or three sentences; the report in your README has the details.
 
-**Results**, mean $\pm$ sd over every run of each configuration:
+**Results**, $\text{mean} \pm \text{sd}$ over every run of each configuration:
 
 | | GIFT-Eval CRPS | GEP-Val | Training |
 | --- | ---: | ---: | ---: |
