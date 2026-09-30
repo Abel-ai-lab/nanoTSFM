@@ -51,7 +51,7 @@ SPEC = [
 # The whole process, left to right: (title, two detail lines, whether participants may change it).
 PROCESS = [
     ("Pretrain corpus", "GIFT-Eval Pretrain", "no other real data", False),
-    ("Data pipeline", "selection, mixing", "synthetic series", True),
+    ("Data pipeline", "selection, mixing", "preprocessing", True),
     ("Model + training", "any architecture", "1 hour on 1 A100", True),
     ("Forecast", "fixed interface", "nine quantiles", False),
     ("Evaluation", "GIFT-Eval, 97 tasks", "zero-shot CRPS", False),
@@ -520,7 +520,9 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
     _, record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
     points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
-    lows = [min(p[axis] for p in points) - 0.02 for axis in (0, 1)]
+    # Room on the better side, so the star stands apart from even the best model.
+    spans = [max(p[axis] for p in points) - min(p[axis] for p in points) for axis in (0, 1)]
+    lows = [min(p[axis] for p in points) - 0.25 * spans[axis] for axis in (0, 1)]
     highs = [max(p[axis] for p in points) + 0.02 for axis in (0, 1)]
 
     def x(mase):
@@ -548,7 +550,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             f'y="{height - bottom + 20}" text-anchor="middle">{tick:.2f}</text>'
         )
     # The size legend sits in the corner no model reaches: high MASE with low CRPS, the upper left.
-    start, line = left + (8 if narrow else 20), top + 58
+    start, line = left + (8 if narrow else 20), top + 30
     taken = [(start, line - 40, start + (180 if narrow else 230), line + 18)]
     parts.append(
         f'<text class="rlabel" x="{start}" y="{line - 26}">Point size: parameters'
