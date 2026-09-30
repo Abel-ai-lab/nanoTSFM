@@ -129,8 +129,8 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 ## Citation
 
 ```bibtex
-@misc{nanotsfm,
-  author = {Zhu, Hank and Wan, Shu},
+@software{nanotsfm,
+  author = {{Abel AI Lab}},
   title = {{nanoTSFM}},
   year = {2026},
   url = {https://github.com/Abel-ai-lab/nanoTSFM}
