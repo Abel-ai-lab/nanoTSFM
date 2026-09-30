@@ -24,7 +24,7 @@ its own record.
 - [ ] Keep notable submissions that break a rule or miss the record in a separate list, so good ideas
   are not lost.
 - [ ] Record rulings on edge cases in one place, a FAQ in the [rules](rules.md).
-- [ ] Announce each record in a short post that credits its contributors.
+- [x] ~~Announce each record in a short post that credits its contributors.~~
 
 ## Data
 
