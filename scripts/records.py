@@ -1,13 +1,11 @@
 """Build the record page from records/*/, or print the README's record table.
 
-python scripts/records.py DIR      # DIR/index.html and DIR/records.svg
+python scripts/records.py DIR      # DIR/index.html, DIR/records.svg and DIR/scatter.svg
 python scripts/records.py --table
 """
 
 import html
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -16,12 +14,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
 # GIFT-Eval leaderboard at gift-eval commit 9a014e9: zero-shot models without test leakage.
-MILESTONES = [
-    ("TimesFM-3", 0.456),
-    ("Toto-2.0-4m", 0.524),
-    ("TinyCast", 0.545),
-    ("Moirai-small", 0.650),
-]
+MILESTONES = {
+    "TimesFM-3": {"mase": 0.667, "crps": 0.456},
+    "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524},
+    "TinyCast": {"mase": 0.774, "crps": 0.545},
+    "Moirai-small": {"mase": 0.946, "crps": 0.650},
+}
 # (text, link, Simple Icons logo and its color)
 LINKS = [
     ("Code", REPO, "github/F4F5F1"),
@@ -46,8 +44,9 @@ SETUP = [
 ]
 RULE = """A record is the mean of three or more runs at one commit, retrained by the maintainers. It
 must improve on the previous record by more than seed noise: 0.013 with three runs each."""
-FOOTNOTE = """Each gray dot is one verified run; the orange line is the record, the mean of its
-runs. Dashed lines mark published models on the GIFT-Eval leaderboard."""
+FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
+the two panels by metric, each small gray dot is one verified run and the orange line is the record,
+the mean of its runs. Records are decided on CRPS."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
@@ -78,7 +77,8 @@ main {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 3
 h2 {{ color: var(--ink); font-size: 22px; font-weight: 600; margin: 44px 0 12px; }}
 .figure {{ width: min(1040px, calc(100vw - 40px)); position: relative; left: 50%;
   transform: translateX(-50%); margin: 8px 0 0; }}
-.figure .scroll svg {{ min-width: 640px; }}
+.figure .scroll svg {{ min-width: 860px; }}
+.figure + .figure {{ margin-top: 20px; }}
 figcaption {{ color: var(--muted); font-size: 14px; margin-top: 6px; }}
 svg {{ display: block; width: 100%; height: auto; }}
 svg .title {{ fill: var(--ink); font: 600 17px "IBM Plex Sans", Arial, sans-serif; }}
@@ -88,10 +88,17 @@ svg .grid {{ stroke: var(--rule); }}
 svg .ref {{ stroke: var(--milestone); stroke-dasharray: 5 5; }}
 svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
 svg .run {{ fill: var(--run); }}
+svg .model {{ fill: var(--milestone); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
 svg .rec {{ fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }}
 svg .change {{ fill: var(--accent); font: 12.5px "IBM Plex Sans", Arial, sans-serif; }}
 svg .seed {{ fill: none; stroke-width: 1.2; }}
+svg [data-tip] {{ transform-box: fill-box; transform-origin: center; }}
+svg [data-tip].on {{ transform: scale(1.6); }}
+.tip {{ position: fixed; z-index: 10; pointer-events: none; max-width: 280px; white-space: pre-line;
+  background: var(--ink); color: var(--paper); border-radius: 6px; padding: 8px 12px;
+  font-size: 13px; line-height: 1.5; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }}
+.tip b {{ display: block; }}
 dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0; }}
 dt {{ color: var(--muted); }} dd {{ margin: 0; }}
 .scroll {{ overflow-x: auto; }}
@@ -107,22 +114,62 @@ summary {{ cursor: pointer; color: var(--ink); }}
 .body {{ padding-top: 10px; display: grid; gap: 14px; }}
 .body p {{ margin: 0; }}
 .changes {{ margin: 0; padding-left: 18px; font: 14px "IBM Plex Mono", Menlo, monospace; }}
-footer {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 0 40px;
-  color: var(--muted); font-size: 13px; }}
 @media (max-width: 600px) {{ .band h1 {{ font-size: 36px; }} dl {{ grid-template-columns: 1fr; }} }}
 """
-# The README shows the figure as an image, outside the page's styles.
+# The README shows the figures as images, outside the page's styles.
 STANDALONE = """<style>
 .title { fill: #14202B; font: 600 17px Arial, sans-serif; }
 .sub { fill: #6B7682; font: 13px Arial, sans-serif; }
 .tick { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
 .grid { stroke: #E1E4E0; } .ref { stroke: #8C99A6; stroke-dasharray: 5 5; }
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
+.model { fill: #8C99A6; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
 .change { fill: #D9622B; font: 12.5px Arial, sans-serif; }
 </style><rect width="100%" height="100%" fill="#FFFFFF"/>"""
 SEEDS = ["var(--accent)", "var(--ink)", "var(--milestone)", "var(--muted)"]
+# Show the tooltip of the point nearest the pointer, as plotting libraries do.
+SCRIPT = """
+const tip = document.querySelector(".tip");
+const points = [...document.querySelectorAll(".figure [data-tip]")];
+let shown = null;
+function show(point) {
+  if (point === shown) return;
+  shown?.classList.remove("on");
+  shown = point;
+  tip.hidden = !point;
+  if (!point) return;
+  point.classList.add("on");
+  const [head, ...rest] = point.dataset.tip.split("\\n");
+  const title = document.createElement("b");
+  title.textContent = head;
+  tip.replaceChildren(title, rest.join("\\n"));
+  const box = point.getBoundingClientRect();
+  let left = box.right + 10;
+  if (left + tip.offsetWidth > innerWidth - 8) left = box.left - 10 - tip.offsetWidth;
+  const top = box.top + box.height / 2 - tip.offsetHeight / 2;
+  tip.style.left = Math.max(8, left) + "px";
+  tip.style.top = Math.max(8, Math.min(innerHeight - tip.offsetHeight - 8, top)) + "px";
+}
+function nearest(event) {
+  let best = null, reach = 14;
+  for (const point of points) {
+    const box = point.getBoundingClientRect();
+    const x = box.left + box.width / 2 - event.clientX;
+    const away = Math.hypot(x, box.top + box.height / 2 - event.clientY);
+    if (away < reach) [best, reach] = [point, away];
+  }
+  show(best);
+}
+for (const svg of document.querySelectorAll(".figure svg")) {
+  svg.addEventListener("pointermove", nearest);
+  svg.addEventListener("pointerdown", nearest);
+  svg.addEventListener("pointerleave", (event) => event.pointerType === "touch" || show(null));
+}
+addEventListener("pointerdown", (event) => event.target.closest(".figure svg") || show(null));
+addEventListener("scroll", () => show(null), true);
+"""
 
 
 def load() -> list[tuple[str, dict, dict]]:
@@ -160,74 +207,176 @@ def people(team: dict) -> str:
     )
 
 
-def progress_chart(entries, standalone=False) -> str:
-    """Every verified run as a gray dot, the record as a step line; lower CRPS is better."""
-    width, height, left, right, top, bottom = 960, 470, 64, 200, 74, 44
-    runs = [run["gift_eval"]["geometric_relative_crps"] for _, _, r in entries for run in r["runs"]]
-    means = [r["gift_eval"]["crps"] for _, _, r in entries]
-    lo = min(runs + [v for _, v in MILESTONES]) - 0.01
-    hi = max(runs) + 0.01
-    count = len(entries)
-
-    def x(i):
-        return left + (width - left - right) * (i + 0.5) / count
-
-    def y(v):
-        return top + (height - top - bottom) * (hi - v) / (hi - lo)
-
-    title = f"1 record: GIFT-Eval relative CRPS {means[0]:.3f}"
-    if count > 1:
-        title = f"{count} records: GIFT-Eval relative CRPS {means[0]:.3f} → {means[-1]:.3f}"
-    parts = [
-        f'<text class="title" x="{left}" y="26">{title}</text>'
-        f'<text class="sub" x="{left}" y="48">Mean of three or more seeds per record · 97 tasks, '
-        "zero-shot · lower is better</text>"
-    ]
-    tick = round(lo * 20) / 20
-    while tick <= hi + 1e-9:
-        if tick >= lo:
-            parts.append(
-                f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
-                f'y2="{y(tick):.1f}"/><text class="tick" x="{left - 8}" y="{y(tick) + 4:.1f}" '
-                f'text-anchor="end">{tick:.2f}</text>'
-            )
-        tick = round(tick + 0.05, 2)
-    for name, value in MILESTONES:
-        parts.append(
-            f'<line class="ref" x1="{left}" x2="{width - right}" y1="{y(value):.1f}" '
-            f'y2="{y(value):.1f}"/><text class="rlabel" x="{width - right + 8}" '
-            f'y="{y(value) + 4:.1f}">{esc(name)} {value:.3f}</text>'
-        )
-    for i, (_, _, result) in enumerate(entries):
-        scores = [run["gift_eval"]["geometric_relative_crps"] for run in result["runs"]]
-        for j, score in enumerate(scores):
-            dx = (j - (len(scores) - 1) / 2) * 7
-            parts.append(f'<circle class="run" cx="{x(i) + dx:.1f}" cy="{y(score):.1f}" r="3.5"/>')
-    path = f"M{x(0):.1f},{y(means[0]):.1f}"
-    for i in range(1, count):
-        path += f" H{x(i):.1f} V{y(means[i]):.1f}"
-    parts.append(f'<path class="best" d="{path} H{width - right:.1f}"/>')
-    for i, (_, team, result) in enumerate(entries):
-        label = team["description"] if i else "baseline"
-        score = result["gift_eval"]
-        parts.append(
-            f'<circle class="rec" cx="{x(i):.1f}" cy="{y(means[i]):.1f}" r="5">'
-            f"<title>Record {i + 1}: {score['crps']:.4f} ± {score['crps_sd']:.4f} over "
-            f"{score['runs']} runs</title></circle>"
-            f'<text class="change" transform="translate({x(i) + 8:.1f},{y(means[i]) - 10:.1f}) '
-            f'rotate(-28)">{esc(label)}</text>'
-            f'<text class="tick" x="{x(i):.1f}" y="{height - bottom + 20}" '
-            f'text-anchor="middle">{i + 1}</text>'
-        )
-    parts.append(
-        f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 6}" '
-        'text-anchor="middle">Record</text>'
-    )
-    head = f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Record progress"'
+def svg(width, height, label, parts, standalone) -> str:
+    head = f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="{label}"'
     if standalone:
         head += f' xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">'
         return head + STANDALONE + "".join(parts) + "</svg>"
     return head + ">" + "".join(parts) + "</svg>"
+
+
+def tips(standalone):
+    """Text the page shows when a point is hovered; the README's image has no tooltips."""
+
+    def tip(*lines):
+        return "" if standalone else f' data-tip="{esc(chr(10).join(lines))}"'
+
+    def run(number, run):
+        score = run["gift_eval"]
+        return tip(
+            f"Record {number}, seed {run['seed']}",
+            f"MASE {score['geometric_relative_mase']:.4f}",
+            f"CRPS {score['geometric_relative_crps']:.4f}",
+            f"{run['training_seconds']:.0f} s on {run['device']}",
+        )
+
+    def record(number, folder, team, result):
+        score = result["gift_eval"]
+        return tip(
+            f"Record {number} · {folder.split('_', 1)[0]}",
+            team["description"],
+            f"MASE {score['mase']:.4f} ± {score['mase_sd']:.4f}",
+            f"CRPS {score['crps']:.4f} ± {score['crps_sd']:.4f}",
+            f"{score['runs']} runs · " + ", ".join(f"@{m['github']}" for m in team["members"]),
+        )
+
+    def model(name, scores):
+        lines = (f"MASE {scores['mase']:.3f}", f"CRPS {scores['crps']:.3f}")
+        return tip(name, *lines, "GIFT-Eval leaderboard")
+
+    return run, record, model
+
+
+def ticks(lo, hi):
+    tick = round(lo * 20) / 20
+    while tick <= hi + 1e-9:
+        if tick >= lo:
+            yield tick
+        tick = round(tick + 0.05, 2)
+
+
+def progress_chart(entries, standalone=False) -> str:
+    """MASE and CRPS by record, side by side: each run a gray dot, the record a step line."""
+    width, height, top, bottom = 1040, 400, 86, 44
+    count = len(entries)
+    run_tip, record_tip, _ = tips(standalone)
+    parts = []
+    for panel, metric in enumerate(("mase", "crps")):
+        left = panel * width // 2 + 64
+        right = (panel + 1) * width // 2 - 146
+        name = metric.upper()
+        key = f"geometric_relative_{metric}"
+        runs = [run["gift_eval"][key] for _, _, r in entries for run in r["runs"]]
+        means = [r["gift_eval"][metric] for _, _, r in entries]
+        marks = [(model, scores[metric]) for model, scores in MILESTONES.items()]
+        lo = min(runs + [value for _, value in marks]) - 0.01
+        hi = max(runs) + 0.01
+        xs = [left + (right - left) * (i + 0.5) / count for i in range(count)]
+        span = (height - top - bottom) / (hi - lo)
+        ys = {v: top + span * (hi - v) for v in runs + means + [v for _, v in marks]}
+        parts.append(
+            f'<text class="title" x="{left}" y="26">GIFT-Eval relative {name} '
+            "(lower is better)</text>"
+        )
+        for tick in ticks(lo, hi):
+            y = top + span * (hi - tick)
+            parts.append(
+                f'<line class="grid" x1="{left}" x2="{right}" y1="{y:.1f}" y2="{y:.1f}"/>'
+                f'<text class="tick" x="{left - 8}" y="{y + 4:.1f}" text-anchor="end">'
+                f"{tick:.2f}</text>"
+            )
+        for model, value in marks:
+            parts.append(
+                f'<line class="ref" x1="{left}" x2="{right}" y1="{ys[value]:.1f}" '
+                f'y2="{ys[value]:.1f}"/><text class="rlabel" x="{right + 8}" '
+                f'y="{ys[value] + 4:.1f}">{esc(model)} {value:.3f}</text>'
+            )
+        for i, (_, _, result) in enumerate(entries):
+            for j, run in enumerate(result["runs"]):
+                dx = (j - (len(result["runs"]) - 1) / 2) * 7
+                parts.append(
+                    f'<circle class="run" cx="{xs[i] + dx:.1f}" '
+                    f'cy="{ys[run["gift_eval"][key]]:.1f}" r="3.5"{run_tip(i + 1, run)}/>'
+                )
+        path = f"M{xs[0]:.1f},{ys[means[0]]:.1f}"
+        for i in range(1, count):
+            path += f" H{xs[i]:.1f} V{ys[means[i]]:.1f}"
+        parts.append(f'<path class="best" d="{path} H{right}"/>')
+        for i, (folder, team, result) in enumerate(entries):
+            label = team["description"] if i else "baseline"
+            y = ys[means[i]]
+            parts.append(
+                f'<circle class="rec" cx="{xs[i]:.1f}" cy="{y:.1f}" r="5"'
+                f"{record_tip(i + 1, folder, team, result)}/>"
+                f'<text class="change" transform="translate({xs[i] + 8:.1f},{y - 10:.1f}) '
+                f'rotate(-28)">{esc(label)}</text>'
+                f'<text class="tick" x="{xs[i]:.1f}" y="{height - bottom + 20}" '
+                f'text-anchor="middle">{i + 1}</text>'
+            )
+        parts.append(
+            f'<text class="sub" x="{(left + right) / 2:.1f}" y="{height - 6}" '
+            'text-anchor="middle">Record</text>'
+        )
+    return svg(width, height, "MASE and CRPS by record", parts, standalone)
+
+
+def scatter_chart(entries, standalone=False) -> str:
+    """CRPS against MASE: records and published models as points."""
+    width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
+    _, record_tip, model_tip = tips(standalone)
+    points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
+    points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
+    lows = [min(p[axis] for p in points) - 0.02 for axis in (0, 1)]
+    highs = [max(p[axis] for p in points) + 0.02 for axis in (0, 1)]
+
+    def x(mase):
+        return left + (width - left - right) * (mase - lows[0]) / (highs[0] - lows[0])
+
+    def y(crps):
+        return top + (height - top - bottom) * (highs[1] - crps) / (highs[1] - lows[1])
+
+    parts = [
+        f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS against MASE '
+        "(lower left is better)</text>"
+    ]
+    for tick in ticks(lows[1], highs[1]):
+        parts.append(
+            f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
+            f'y2="{y(tick):.1f}"/><text class="tick" x="{left - 8}" y="{y(tick) + 4:.1f}" '
+            f'text-anchor="end">{tick:.2f}</text>'
+        )
+    for tick in ticks(lows[0], highs[0]):
+        parts.append(
+            f'<line class="grid" x1="{x(tick):.1f}" x2="{x(tick):.1f}" y1="{top}" '
+            f'y2="{height - bottom}"/><text class="tick" x="{x(tick):.1f}" '
+            f'y="{height - bottom + 20}" text-anchor="middle">{tick:.2f}</text>'
+        )
+    for model, scores in MILESTONES.items():
+        cx, cy = x(scores["mase"]), y(scores["crps"])
+        parts.append(
+            f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="5"{model_tip(model, scores)}/>'
+            f'<text class="rlabel" x="{cx + 10:.1f}" y="{cy + 4:.1f}">{esc(model)}</text>'
+        )
+    means = [(x(r["gift_eval"]["mase"]), y(r["gift_eval"]["crps"])) for _, _, r in entries]
+    path = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy in means)
+    parts.append(f'<path class="best" d="M{path}"/>')
+    for i, (folder, team, result) in enumerate(entries):
+        label = team["description"] if i else "baseline"
+        cx, cy = means[i]
+        parts.append(
+            f'<circle class="rec" cx="{cx:.1f}" cy="{cy:.1f}" r="5"'
+            f"{record_tip(i + 1, folder, team, result)}/>"
+            f'<text class="change" x="{cx - 10:.1f}" y="{cy - 8:.1f}" text-anchor="end">'
+            f"{i + 1}. {esc(label)}</text>"
+        )
+    middle = top + (height - top - bottom) / 2
+    parts.append(
+        f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 8}" '
+        'text-anchor="middle">Relative MASE</text>'
+        f'<text class="sub" transform="translate(16,{middle:.1f}) rotate(-90)" '
+        'text-anchor="middle">Relative CRPS</text>'
+    )
+    return svg(width, height, "CRPS against MASE", parts, standalone)
 
 
 def loss_chart(result) -> str:
@@ -346,7 +495,7 @@ def details(entries) -> str:
     return "".join(out)
 
 
-def page(entries, built: str) -> str:
+def page(entries) -> str:
     buttons = "".join(
         f'<a href="{url}">'
         + (
@@ -363,27 +512,27 @@ def page(entries, built: str) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>nanoTSFM</title>
-<meta name="description" content="nanoTSFM: training small time-series foundation models in one
-hour on one GPU, scored zero-shot on GIFT-Eval.">
+<meta name="description" content="nanoTSFM: training a time-series foundation model on one A100,
+targeting GIFT-Eval.">
 <link rel="stylesheet" href="{FONTS}">
 <style>{STYLE}</style>
 </head>
 <body>
 <header class="band"><div class="inner">
 <h1><i>nano</i>TSFM</h1>
-<p>Training small time-series foundation models in one hour on one GPU, scored zero-shot on
-GIFT-Eval.</p>
+<p>Training a time-series foundation model on one A100, targeting GIFT-Eval.</p>
 <nav class="buttons">{buttons}</nav>
 </div></header>
 <main>
+<figure class="figure"><div class="scroll">{scatter_chart(entries)}</div></figure>
 <figure class="figure"><div class="scroll">{progress_chart(entries)}</div>
 <figcaption>{FOOTNOTE}</figcaption></figure>
 <h2>The task</h2><p>{ABOUT}</p><dl>{setup}</dl>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
 <h2>Record details</h2>{details(entries)}
 </main>
-<footer>Built from <a href="{REPO}/tree/main/records">records/</a> at
-<a href="{REPO}/commit/{esc(built)}">{esc(built[:7])}</a>.</footer>
+<div class="tip" role="tooltip" hidden></div>
+<script>{SCRIPT}</script>
 </body>
 </html>
 """
@@ -396,14 +545,9 @@ def main():
         return
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
     out.mkdir(parents=True, exist_ok=True)
-    built = (
-        os.environ.get("GITHUB_SHA")
-        or subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True
-        ).stdout.strip()
-    )
-    (out / "index.html").write_text(page(entries, built))
+    (out / "index.html").write_text(page(entries))
     (out / "records.svg").write_text(progress_chart(entries, standalone=True))
+    (out / "scatter.svg").write_text(scatter_chart(entries, standalone=True))
     print(out / "index.html")
 
 
