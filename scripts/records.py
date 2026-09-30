@@ -15,10 +15,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
 # GIFT-Eval leaderboard at gift-eval commit 9a014e9: models without test leakage. Parameter counts
-# are the safetensors totals on each model's Hugging Face page. The leaderboard's best entry is an
-# agentic system of several models, with no published size; the figures draw it as a diamond.
+# are the safetensors totals on each model's Hugging Face page. The leaderboard ranks entries by
+# their average rank over tasks; its first, STRIDE w/ Synapse, is an agentic system with no
+# published size, which the figures draw as a diamond.
 MILESTONES = {
-    "EXAONE-Forecast-Agent": {"mase": 0.610, "crps": 0.419, "parameters": None, "short": "EXAONE"},
+    "STRIDE w/ Synapse": {"mase": 0.625, "crps": 0.423, "parameters": None, "short": "STRIDE"},
     "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
     "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524, "parameters": 4_144_448},
     "TinyCast": {"mase": 0.774, "crps": 0.545, "parameters": 146_505},
@@ -71,7 +72,7 @@ MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1
   {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false})"></script>"""
 RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
 FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard; the
-diamond is EXAONE-Forecast-Agent, the leaderboard's best entry, an agentic system. In the two
+diamond is STRIDE w/ Synapse, ranked first on the leaderboard, an agentic system. In the two
 panels by metric, each small gray dot is one verified run and the orange line is the record, the
 mean of its runs. Records are decided on CRPS."""
 FONTS = (
@@ -340,7 +341,7 @@ def tips(standalone):
     def model(name, scores):
         lines = (f"MASE {scores['mase']:.3f}", f"CRPS {scores['crps']:.3f}")
         if scores["parameters"] is None:
-            return tip(name, *lines, "The leaderboard's best entry, an agentic system")
+            return tip(name, *lines, "Ranked first on the leaderboard; an agentic system")
         return tip(name, *lines, f"{size(scores['parameters'])} parameters")
 
     return run, record, model
