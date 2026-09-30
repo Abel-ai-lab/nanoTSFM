@@ -29,6 +29,9 @@ LINKS = [
     ("Rules", f"{REPO}/blob/main/docs/rules.md", None),
     ("Submit a result", f"{REPO}/blob/main/docs/submission.md", None),
 ]
+ABOUT = """nanoTSFM is an open benchmark for training small time-series foundation models on a fixed
+budget. A run trains on GIFT-Eval Pretrain and is then scored on GIFT-Eval datasets it has never
+seen; the best verified score holds the record."""
 # The task as a short specification; KaTeX renders the TeX between dollar signs.
 DOCS = f"{REPO}/blob/main/docs"
 SPEC = [
@@ -670,7 +673,7 @@ targeting GIFT-Eval.">
 <figure class="figure narrow">{scatter_chart(entries, narrow=True)}</figure>
 <figure class="figure narrow">{progress_chart(entries, narrow=True)}
 <figcaption>{FOOTNOTE}</figcaption></figure>
-<h2>The task</h2><dl class="spec">{spec}</dl>
+<h2>The task</h2><p>{ABOUT}</p><dl class="spec">{spec}</dl>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
 <h2>Record details</h2>{details(entries)}
 </main>
