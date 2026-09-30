@@ -40,10 +40,19 @@ SPEC = [
     ("Budget", r"$\leq 3600\,\text{s}$ of training on $1 \times$ A100 80GB"),
     ("Score", f'<a href="{DOCS}/rules.md#score">CRPS</a> on GIFT-Eval, zero-shot; lower is better'),
     (
-        "Record",
-        r"$\geq 3$ seeds, $\geq 0.013$ below the last record "
+        "Submission",
+        r"$\geq 3$ seeds at one commit; a record needs $\geq 0.013$ below the last "
         f'(<a href="{DOCS}/submission.md#the-record-rule">rule</a>)',
     ),
+]
+# The whole process, left to right: (title, two detail lines, whether participants may change it).
+PROCESS = [
+    ("Pretrain corpus", "GIFT-Eval Pretrain", "no other real data", False),
+    ("Data pipeline", "selection, mixing", "synthetic series", True),
+    ("Model + training", "any architecture", "1 hour on 1 A100", True),
+    ("Forecast", "fixed interface", "nine quantiles", False),
+    ("Evaluation", "GIFT-Eval, 97 tasks", "zero-shot CRPS", False),
+    ("Submission", "3+ seeds, one PR", "retrained by us", False),
 ]
 MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css"
   integrity="sha384-1vdNCNel6Tx/NQa8IR1mGOGKsbGreCkOPfbtPPnUURJ5Tu2PRVfQ/7KLZC+Pi1p1"
@@ -64,9 +73,9 @@ FONTS = (
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
 )
 TOKENS = """--paper: #FFFFFF; --ink: #14202B; --text: #3E4A56; --muted: #6B7682; --rule: #E1E4E0;
-  --accent: #D9622B; --milestone: #8C99A6; --run: #A9B1BA;"""
+  --accent: #D9622B; --milestone: #8C99A6; --run: #A9B1BA; --mine: #FBE6DA;"""
 DARK = """--paper: #10181F; --ink: #F4F5F1; --text: #C9D3DC; --muted: #8C99A6; --rule: #2A3845;
-  --accent: #F08A55; --milestone: #6B7682; --run: #56626E; color-scheme: dark;"""
+  --accent: #F08A55; --milestone: #6B7682; --run: #56626E; --mine: #3A2419; color-scheme: dark;"""
 STYLE = f"""
 :root {{ {TOKENS} }}
 @media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ {DARK} }} }}
@@ -117,6 +126,13 @@ dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16p
   align-items: baseline; }}
 dt {{ color: var(--muted); }} dd {{ margin: 0; }}
 .spec .katex {{ font-size: 1.05em; }}
+.flow {{ margin: 20px 0 12px; }}
+.flow .box {{ fill: var(--paper); stroke: var(--milestone); }}
+.flow .box.mine {{ fill: var(--mine); stroke: var(--accent); }}
+.flow .name {{ fill: var(--ink); font: 600 13px "IBM Plex Sans", Arial, sans-serif; }}
+.flow .line {{ fill: var(--muted); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
+.flow .arrow {{ stroke: var(--milestone); fill: none; }}
+.flow .head {{ fill: var(--milestone); }}
 .scroll {{ overflow-x: auto; }}
 table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
 th {{ text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; }}
@@ -298,6 +314,61 @@ def tips(standalone):
         return tip(name, *lines, f"{size(scores['parameters'])} parameters")
 
     return run, record, model
+
+
+def process(narrow=False) -> str:
+    """The whole process as boxes and arrows; the parts participants may change are orange."""
+    count = len(PROCESS)
+    if narrow:  # one box per row, top to bottom
+        width, wide, tall, gap = 400, 400, 46, 18
+        spots = [(0, k * (tall + gap)) for k in range(count)]
+    else:  # one row, left to right
+        width, wide, tall, gap = 880, 128, 76, 22
+        spots = [(k * (wide + gap), 0) for k in range(count)]
+    legend = spots[-1][1] + tall + 26
+    parts = []
+    for k, ((x, y), (name, first, second, mine)) in enumerate(zip(spots, PROCESS, strict=True)):
+        parts.append(
+            f'<rect class="box{" mine" * mine}" x="{x + 0.5}" y="{y + 0.5}" width="{wide - 1}" '
+            f'height="{tall - 1}" rx="8"/>'
+        )
+        if narrow:
+            parts.append(
+                f'<text class="name" x="{x + 14}" y="{y + 20}">{name}</text>'
+                f'<text class="line" x="{x + 14}" y="{y + 37}">{first} · {second}</text>'
+            )
+        else:
+            parts.append(
+                f'<text class="name" x="{x + 12}" y="{y + 24}">{name}</text>'
+                f'<text class="line" x="{x + 12}" y="{y + 45}">{first}</text>'
+                f'<text class="line" x="{x + 12}" y="{y + 62}">{second}</text>'
+            )
+        if k:  # an arrow from the previous box
+            if narrow:
+                mid, start, end = x + wide / 2, y - gap + 3, y - 4
+                parts.append(
+                    f'<path class="arrow" d="M{mid},{start} V{end}"/>'
+                    f'<path class="head" d="M{mid - 4},{end - 5} L{mid},{end} '
+                    f'L{mid + 4},{end - 5}Z"/>'
+                )
+            else:
+                mid, start, end = y + tall / 2, x - gap + 3, x - 4
+                parts.append(
+                    f'<path class="arrow" d="M{start},{mid} H{end}"/>'
+                    f'<path class="head" d="M{end - 5},{mid - 4} L{end},{mid} '
+                    f'L{end - 5},{mid + 4}Z"/>'
+                )
+    for k, (label, mine) in enumerate((("Yours to change", True), ("Fixed", False))):
+        x = k * 150
+        parts.append(
+            f'<rect class="box{" mine" * mine}" x="{x + 0.5}" y="{legend - 11.5}" width="16" '
+            f'height="14" rx="3"/><text class="line" x="{x + 24}" y="{legend}">{label}</text>'
+        )
+    height = legend + 8
+    return (
+        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="The process from data to '
+        f'record; orange parts are yours to change">{"".join(parts)}</svg>'
+    )
 
 
 def ticks(lo, hi):
@@ -673,7 +744,10 @@ targeting GIFT-Eval.">
 <figure class="figure narrow">{scatter_chart(entries, narrow=True)}</figure>
 <figure class="figure narrow">{progress_chart(entries, narrow=True)}
 <figcaption>{FOOTNOTE}</figcaption></figure>
-<h2>The task</h2><p>{ABOUT}</p><dl class="spec">{spec}</dl>
+<h2>The task</h2><p>{ABOUT}</p>
+<figure class="flow wide">{process()}</figure>
+<figure class="flow narrow">{process(narrow=True)}</figure>
+<dl class="spec">{spec}</dl>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
 <h2>Record details</h2>{details(entries)}
 </main>
