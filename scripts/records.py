@@ -117,6 +117,7 @@ svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-s
 svg .run {{ fill: var(--run); }}
 svg .model {{ fill: var(--milestone); }}
 svg .key {{ fill: var(--paper); stroke: var(--milestone); }}
+svg .star {{ fill: var(--accent); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
 svg .rec {{ fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }}
 svg .change {{ fill: var(--accent); font: 12.5px "IBM Plex Sans", Arial, sans-serif; }}
@@ -178,7 +179,7 @@ STANDALONE = """<style>
 .tick { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
 .grid { stroke: #E1E4E0; } .ref { stroke: #8C99A6; stroke-dasharray: 5 5; }
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
-.model { fill: #8C99A6; } .key { fill: #FFFFFF; stroke: #8C99A6; }
+.model { fill: #8C99A6; } .key { fill: #FFFFFF; stroke: #8C99A6; } .star { fill: #D9622B; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
 .change { fill: #D9622B; font: 12.5px Arial, sans-serif; }
@@ -431,7 +432,7 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         ys = {v: down + top + scale * (v - lo) for v in runs + means + [v for _, v in marks]}
         parts.append(
             f'<text class="title" x="{4 if narrow else left}" y="{down + 26}">'
-            f"GIFT-Eval relative {name} (up is better)</text>"
+            f"{name} by record (up is better)</text>"
         )
         for tick in ticks(lo, hi):
             y = down + top + scale * (tick - lo)
@@ -515,7 +516,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
     """
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
     if narrow:
-        width, height, left, right, top, bottom = 400, 430, 46, 14, 78, 50
+        width, height, left, right, top, bottom = 400, 414, 46, 14, 62, 50
     _, record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
     points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
@@ -528,14 +529,10 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
     def y(crps):
         return top + (height - top - bottom) * (crps - lows[1]) / (highs[1] - lows[1])
 
-    parts = [
-        f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS against MASE '
-        "(upper right is better)</text>"
-    ]
+    parts = [f'<text class="title" x="{left}" y="26">CRPS vs MASE</text>']
     if narrow:
         parts = [
-            '<text class="title" x="4" y="24">GIFT-Eval relative CRPS against MASE</text>'
-            '<text class="sub" x="4" y="44">Upper right is better</text>'
+            '<text class="title" x="4" y="24">CRPS vs MASE</text>'
             f'<text class="sub" x="4" y="{top - 10}">Relative CRPS</text>'
         ]
     for tick in ticks(lows[1], highs[1]):
@@ -581,6 +578,15 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             px, py = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
             taken.append((px - 3, py - 3, px + 3, py + 3))
     frame = (left, top - 20, width, height - bottom)
+    # A star marks the best corner, the lowest MASE and the lowest CRPS, drawn over the points.
+    sx, sy = width - right, top
+    star = " ".join(
+        f"{sx + (10 if k % 2 == 0 else 4.2) * math.cos(math.radians(-90 + 36 * k)):.1f},"
+        f"{sy + (10 if k % 2 == 0 else 4.2) * math.sin(math.radians(-90 + 36 * k)):.1f}"
+        for k in range(10)
+    )
+    corner = f'<polygon class="star" points="{star}"><title>Best corner</title></polygon>'
+    taken.append((sx - 12, sy - 12, sx + 12, sy + 12))
     path = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy, _ in records)
     parts.append(f'<path class="best" d="M{path}"/>')
     labels = []
@@ -614,7 +620,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         + f'<text class="sub" transform="translate(16,{middle:.1f}) rotate(-90)" '
         'text-anchor="middle">Relative CRPS</text>' * (not narrow)
     )
-    return svg(width, height, "CRPS against MASE", parts + labels, standalone)
+    return svg(width, height, "CRPS against MASE", parts + labels + [corner], standalone)
 
 
 def loss_chart(result) -> str:
