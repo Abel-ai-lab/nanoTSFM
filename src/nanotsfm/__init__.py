@@ -1,1 +1,1 @@
-__version__ = "0.1.0"
+"""nanoTSFM: train a small time-series foundation model in one hour on one GPU."""

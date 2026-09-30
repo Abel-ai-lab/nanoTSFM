@@ -180,10 +180,18 @@ def record_environment(output: Path):
     )
 
 
-def train(config_path: Path, output: Path, resume: Path | None = None, data: str | None = None):
+def train(
+    config_path: Path,
+    output: Path,
+    resume: Path | None = None,
+    data: str | None = None,
+    seed: int | None = None,
+):
     model_config, settings = load_config(config_path)
     if data is not None:
         settings["data"] = str(data)
+    if seed is not None:
+        settings["seed"] = seed
     train_set = load(settings["data"], "train")
     identity = describe(settings["data"], train_set)
     device = device_for(settings["device"])
@@ -357,8 +365,9 @@ def main():
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--data", help="override the config's data: a config name or a folder")
+    parser.add_argument("--seed", type=int, help="override the config's seed")
     args = parser.parse_args()
-    print(train(args.config, args.output, args.resume, args.data))
+    print(train(args.config, args.output, args.resume, args.data, args.seed))
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ __pycache__/
 /results/
 /checkpoints/
 /tmp/
+/site/
 wandb/
 *.pt
 *.pth
@@ -31,11 +32,10 @@ wandb/
 *.parquet
 *.arrow
 
-# A submission folder holds exactly these files.
-/submissions/*/*
-!/submissions/*/README.md
-!/submissions/*/result.json
-!/submissions/*/changes.diff
+# A record folder holds exactly these files.
+/records/*/*
+!/records/*/README.md
+!/records/*/result.json
 
 external/
 dist/
