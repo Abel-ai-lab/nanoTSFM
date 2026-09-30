@@ -132,6 +132,8 @@ svg [data-tip].on {{ transform: scale(1.6); }}
   background: var(--ink); color: var(--paper); border-radius: 6px; padding: 8px 12px;
   font-size: 13px; line-height: 1.5; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }}
 .tip b {{ display: block; }}
+.tip.linked {{ pointer-events: auto; }}
+.tip a {{ color: var(--paper); text-underline-offset: 3px; }}
 dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0;
   align-items: baseline; }}
 dt {{ color: var(--muted); }} dd {{ margin: 0; }}
@@ -205,6 +207,13 @@ function show(point) {
   const title = document.createElement("b");
   title.textContent = head;
   tip.replaceChildren(title, rest.join("\\n"));
+  // A record's tooltip links to its report, so the tooltip itself takes the pointer.
+  tip.classList.toggle("linked", Boolean(point.dataset.link));
+  if (point.dataset.link) {
+    const report = Object.assign(document.createElement("a"), { href: point.dataset.link });
+    report.textContent = "Read the report";
+    tip.append("\\n", report);
+  }
   const box = point.getBoundingClientRect(), wide = tip.offsetWidth, tall = tip.offsetHeight;
   let left = box.right + 10, top = box.top + box.height / 2 - tall / 2;
   if (left + wide > innerWidth - 8) left = box.left - 10 - wide;
@@ -215,6 +224,13 @@ function show(point) {
   tip.style.left = left + "px";
   tip.style.top = Math.max(8, Math.min(innerHeight - tall - 8, top)) + "px";
 }
+let closing = null;
+function leave() {
+  // Give the pointer time to reach a linked tooltip before it closes.
+  clearTimeout(closing);
+  if (shown?.dataset.link) closing = setTimeout(() => show(null), 400);
+  else show(null);
+}
 function nearest(event) {
   let best = null, reach = event.pointerType === "touch" ? 24 : 10;
   for (const point of points) {
@@ -224,14 +240,19 @@ function nearest(event) {
     const away = Math.hypot(x, box.top + box.height / 2 - event.clientY) - box.width / 2;
     if (away < reach) [best, reach] = [point, away];
   }
-  show(best);
+  if (best) {
+    clearTimeout(closing);
+    show(best);
+  } else if (shown) leave();
 }
 for (const svg of document.querySelectorAll(".figure svg")) {
   svg.addEventListener("pointermove", nearest);
   svg.addEventListener("pointerdown", nearest);
-  svg.addEventListener("pointerleave", (event) => event.pointerType === "touch" || show(null));
+  svg.addEventListener("pointerleave", (event) => event.pointerType === "touch" || leave());
 }
-addEventListener("pointerdown", (event) => event.target.closest(".figure svg") || show(null));
+tip.addEventListener("pointerenter", () => clearTimeout(closing));
+tip.addEventListener("pointerleave", leave);
+addEventListener("pointerdown", (event) => event.target.closest(".figure svg, .tip") || show(null));
 addEventListener("scroll", () => show(null), true);
 """
 
@@ -329,7 +350,8 @@ def tips(standalone):
 
     def record(number, folder, team, result):
         score = result["gift_eval"]
-        return tip(
+        report = "" if standalone else f' data-link="{REPO}/tree/main/records/{esc(folder)}"'
+        return report + tip(
             f"Record {number} · {folder.split('_', 1)[0]}",
             team["description"],
             f"MASE {score['mase']:.4f} ± {score['mase_sd']:.4f}",
@@ -786,6 +808,8 @@ def page(entries) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>nanoTSFM</title>
+<link rel="icon" href="https://abel.ai/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="https://abel.ai/apple-touch-icon.png">
 <meta name="description" content="nanoTSFM: hill-climbing GIFT-Eval with one A100 and one hour.">
 <link rel="stylesheet" href="{FONTS}">
 {MATH}
