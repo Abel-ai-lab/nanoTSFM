@@ -338,8 +338,40 @@ def progress_chart(entries, standalone=False) -> str:
     return svg(width, height, "MASE and CRPS by record", parts, standalone)
 
 
+def place(cx, cy, r, text, taken, frame) -> str:
+    """Attributes for a label beside a point: the first side where it fits and covers nothing."""
+    wide, tall = 6.8 * len(text), 12
+
+    def free(side):
+        x, y, _ = side
+        inside = frame[0] <= x and x + wide <= frame[2] and frame[1] <= y and y + tall <= frame[3]
+        return inside and not any(
+            x < b[2] and b[0] < x + wide and y < b[3] and b[1] < y + tall for b in taken
+        )
+
+    near, up, down = 0.7 * r + 3, cy - 0.7 * r - 2 - tall, cy + 0.7 * r + 2
+    sides = [  # right of the point, then left, below and above, then the four corners
+        (cx + r + 5, cy - tall / 2, "start"),
+        (cx - r - 5 - wide, cy - tall / 2, "end"),
+        (cx - wide / 2, cy + r + 4, "middle"),
+        (cx - wide / 2, cy - r - 4 - tall, "middle"),
+        (cx + near, up, "start"),
+        (cx + near, down, "start"),
+        (cx - near - wide, up, "end"),
+        (cx - near - wide, down, "end"),
+    ]
+    x, y, anchor = next(filter(free, sides), sides[0])
+    taken.append((x, y, x + wide, y + tall))
+    x += {"start": 0, "middle": wide / 2, "end": wide}[anchor]
+    return f'x="{x:.1f}" y="{y + tall - 2:.1f}" text-anchor="{anchor}"'
+
+
 def scatter_chart(entries, standalone=False) -> str:
-    """CRPS against MASE: records and published models as points sized by parameter count."""
+    """CRPS against MASE, best at the lower right: records and published models as points.
+
+    MASE falls to the right, so progress runs the same way as in the charts by record. A point's
+    size shows its parameter count.
+    """
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
     _, record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
@@ -348,14 +380,14 @@ def scatter_chart(entries, standalone=False) -> str:
     highs = [max(p[axis] for p in points) + 0.02 for axis in (0, 1)]
 
     def x(mase):
-        return left + (width - left - right) * (mase - lows[0]) / (highs[0] - lows[0])
+        return left + (width - left - right) * (highs[0] - mase) / (highs[0] - lows[0])
 
     def y(crps):
         return top + (height - top - bottom) * (highs[1] - crps) / (highs[1] - lows[1])
 
     parts = [
         f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS against MASE '
-        "(lower left is better)</text>"
+        "(lower right is better)</text>"
     ]
     for tick in ticks(lows[1], highs[1]):
         parts.append(
@@ -369,40 +401,60 @@ def scatter_chart(entries, standalone=False) -> str:
             f'y2="{height - bottom}"/><text class="tick" x="{x(tick):.1f}" '
             f'y="{height - bottom + 20}" text-anchor="middle">{tick:.2f}</text>'
         )
-    for model, scores in MILESTONES.items():
-        cx, cy, r = x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"])
+    # The size legend sits in the corner no model reaches: high MASE with low CRPS.
+    start, line = left + 20, height - bottom - 34
+    taken = [(start, line - 40, start + 230, line + 18)]
+    parts.append(
+        f'<text class="rlabel" x="{start}" y="{line - 26}">Point size: parameters (log scale)'
+        "</text>"
+    )
+    for parameters in (100_000, 10_000_000, 1_000_000_000):
+        r, label = radius(parameters), size(parameters)
         parts.append(
-            f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
-            f"{model_tip(model, scores)}/>"
-            f'<text class="rlabel" x="{cx + r + 5:.1f}" y="{cy + 4:.1f}">{esc(model)} · '
-            f"{size(scores['parameters'])}</text>"
+            f'<circle class="key" cx="{start + r:.1f}" cy="{line}" r="{r:.1f}"/>'
+            f'<text class="rlabel" x="{start + 2 * r + 5:.1f}" y="{line + 4}">{label}</text>'
         )
-    means = [(x(r["gift_eval"]["mase"]), y(r["gift_eval"]["crps"])) for _, _, r in entries]
-    path = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy in means)
+        start += 2 * r + 5 + 7 * len(label) + 18
+    models = [
+        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"]), name, scores)
+        for name, scores in MILESTONES.items()
+    ]
+    records = [
+        (x(r["gift_eval"]["mase"]), y(r["gift_eval"]["crps"]), radius(r["parameters"]))
+        for _, _, r in entries
+    ]
+    # Labels keep clear of every point and of the line between records.
+    taken += [(cx - r, cy - r, cx + r, cy + r) for cx, cy, r, *_ in models + records]
+    for (ax, ay, _), (bx, by, _) in zip(records, records[1:], strict=False):
+        steps = max(1, int(math.hypot(bx - ax, by - ay) / 6))
+        for k in range(steps + 1):
+            px, py = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
+            taken.append((px - 3, py - 3, px + 3, py + 3))
+    frame = (left, top - 20, width, height - bottom)
+    path = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy, _ in records)
     parts.append(f'<path class="best" d="M{path}"/>')
+    labels = []
     for i, (folder, team, result) in enumerate(entries):
-        label = team["description"] if i else "baseline"
-        (cx, cy), r = means[i], radius(result["parameters"])
+        cx, cy, r = records[i]
+        label = (
+            f"{i + 1}. {team['description'] if i else 'baseline'} · {size(result['parameters'])}"
+        )
         parts.append(
             f'<circle class="rec" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
             f"{record_tip(i + 1, folder, team, result)}/>"
-            f'<text class="change" x="{cx - r - 5:.1f}" y="{cy - 8:.1f}" text-anchor="end">'
-            f"{i + 1}. {esc(label)} · {size(result['parameters'])}</text>"
         )
-    # The size legend sits in the corner no model reaches: high MASE with low CRPS.
-    edge, base = width - right - 28, height - bottom - 24
-    for k, parameters in enumerate((1_000_000_000, 10_000_000, 100_000)):
-        r = radius(parameters)
-        cx = edge - 30 - 66 * k
+        labels.append(
+            f'<text class="change" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
+        )
+    for cx, cy, r, name, scores in models:
+        label = f"{name} · {size(scores['parameters'])}"
         parts.append(
-            f'<circle class="key" cx="{cx:.1f}" cy="{base - r:.1f}" r="{r:.1f}"/>'
-            f'<text class="rlabel" x="{cx + r + 4:.1f}" y="{base - r + 4:.1f}">'
-            f"{size(parameters)}</text>"
+            f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
+            f"{model_tip(name, scores)}/>"
         )
-    parts.append(
-        f'<text class="rlabel" x="{edge}" y="{base - 40}" text-anchor="end">'
-        "Point size: parameters (log scale)</text>"
-    )
+        labels.append(
+            f'<text class="rlabel" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
+        )
     middle = top + (height - top - bottom) / 2
     parts.append(
         f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 8}" '
@@ -410,7 +462,7 @@ def scatter_chart(entries, standalone=False) -> str:
         f'<text class="sub" transform="translate(16,{middle:.1f}) rotate(-90)" '
         'text-anchor="middle">Relative CRPS</text>'
     )
-    return svg(width, height, "CRPS against MASE", parts, standalone)
+    return svg(width, height, "CRPS against MASE", parts + labels, standalone)
 
 
 def loss_chart(result) -> str:
