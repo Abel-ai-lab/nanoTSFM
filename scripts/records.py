@@ -90,6 +90,12 @@ svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
 svg .rec {{ fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }}
 svg .change {{ fill: var(--accent); font: 12.5px "IBM Plex Sans", Arial, sans-serif; }}
 svg .seed {{ fill: none; stroke-width: 1.2; }}
+svg [data-tip] {{ transform-box: fill-box; transform-origin: center; }}
+svg [data-tip].on {{ transform: scale(1.6); }}
+.tip {{ position: fixed; z-index: 10; pointer-events: none; max-width: 280px; white-space: pre-line;
+  background: var(--ink); color: var(--paper); border-radius: 6px; padding: 8px 12px;
+  font-size: 13px; line-height: 1.5; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }}
+.tip b {{ display: block; }}
 dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0; }}
 dt {{ color: var(--muted); }} dd {{ margin: 0; }}
 .scroll {{ overflow-x: auto; }}
@@ -119,6 +125,45 @@ STANDALONE = """<style>
 .change { fill: #D9622B; font: 12.5px Arial, sans-serif; }
 </style><rect width="100%" height="100%" fill="#FFFFFF"/>"""
 SEEDS = ["var(--accent)", "var(--ink)", "var(--milestone)", "var(--muted)"]
+# Show the tooltip of the point nearest the pointer, as plotting libraries do.
+SCRIPT = """
+const svg = document.querySelector(".figure svg"), tip = document.querySelector(".tip");
+const points = [...svg.querySelectorAll("[data-tip]")];
+let shown = null;
+function show(point) {
+  if (point === shown) return;
+  shown?.classList.remove("on");
+  shown = point;
+  tip.hidden = !point;
+  if (!point) return;
+  point.classList.add("on");
+  const [head, ...rest] = point.dataset.tip.split("\\n");
+  const title = document.createElement("b");
+  title.textContent = head;
+  tip.replaceChildren(title, rest.join("\\n"));
+  const box = point.getBoundingClientRect();
+  let left = box.right + 10;
+  if (left + tip.offsetWidth > innerWidth - 8) left = box.left - 10 - tip.offsetWidth;
+  const top = box.top + box.height / 2 - tip.offsetHeight / 2;
+  tip.style.left = Math.max(8, left) + "px";
+  tip.style.top = Math.max(8, Math.min(innerHeight - tip.offsetHeight - 8, top)) + "px";
+}
+function nearest(event) {
+  let best = null, reach = 14;
+  for (const point of points) {
+    const box = point.getBoundingClientRect();
+    const x = box.left + box.width / 2 - event.clientX;
+    const away = Math.hypot(x, box.top + box.height / 2 - event.clientY);
+    if (away < reach) [best, reach] = [point, away];
+  }
+  show(best);
+}
+svg.addEventListener("pointermove", nearest);
+svg.addEventListener("pointerdown", nearest);
+svg.addEventListener("pointerleave", (event) => event.pointerType === "touch" || show(null));
+addEventListener("pointerdown", (event) => svg.contains(event.target) || show(null));
+addEventListener("scroll", () => show(null), true);
+"""
 
 
 def load() -> list[tuple[str, dict, dict]]:
@@ -158,7 +203,7 @@ def people(team: dict) -> str:
 
 def progress_chart(entries, standalone=False) -> str:
     """Every verified run as a gray dot, the record as a step line; lower CRPS is better."""
-    width, height, left, right, top, bottom = 960, 470, 64, 200, 74, 44
+    width, height, left, right, top, bottom = 960, 448, 64, 200, 52, 44
     runs = [run["gift_eval"]["geometric_relative_crps"] for _, _, r in entries for run in r["runs"]]
     means = [r["gift_eval"]["crps"] for _, _, r in entries]
     lo = min(runs + [v for _, v in MILESTONES]) - 0.01
@@ -171,13 +216,12 @@ def progress_chart(entries, standalone=False) -> str:
     def y(v):
         return top + (height - top - bottom) * (hi - v) / (hi - lo)
 
-    title = f"1 record: GIFT-Eval relative CRPS {means[0]:.3f}"
-    if count > 1:
-        title = f"{count} records: GIFT-Eval relative CRPS {means[0]:.3f} → {means[-1]:.3f}"
+    def tip(*lines):
+        """Text the page shows when a point is hovered; the README's image has a title instead."""
+        return "" if standalone else f' data-tip="{esc(chr(10).join(lines))}"'
+
     parts = [
-        f'<text class="title" x="{left}" y="26">{title}</text>'
-        f'<text class="sub" x="{left}" y="48">Mean of three or more seeds per record · 97 tasks, '
-        "zero-shot · lower is better</text>"
+        f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS (lower is better)</text>'
     ]
     tick = round(lo * 20) / 20
     while tick <= hi + 1e-9:
@@ -195,21 +239,38 @@ def progress_chart(entries, standalone=False) -> str:
             f'y="{y(value) + 4:.1f}">{esc(name)} {value:.3f}</text>'
         )
     for i, (_, _, result) in enumerate(entries):
-        scores = [run["gift_eval"]["geometric_relative_crps"] for run in result["runs"]]
-        for j, score in enumerate(scores):
-            dx = (j - (len(scores) - 1) / 2) * 7
-            parts.append(f'<circle class="run" cx="{x(i) + dx:.1f}" cy="{y(score):.1f}" r="3.5"/>')
+        for j, run in enumerate(result["runs"]):
+            score = run["gift_eval"]
+            dx = (j - (len(result["runs"]) - 1) / 2) * 7
+            hover = tip(
+                f"Record {i + 1}, seed {run['seed']}",
+                f"CRPS {score['geometric_relative_crps']:.4f}",
+                f"MASE {score['geometric_relative_mase']:.4f}",
+                f"{run['training_seconds']:.0f} s on {run['device']}",
+            )
+            parts.append(
+                f'<circle class="run" cx="{x(i) + dx:.1f}" '
+                f'cy="{y(score["geometric_relative_crps"]):.1f}" r="3.5"{hover}/>'
+            )
     path = f"M{x(0):.1f},{y(means[0]):.1f}"
     for i in range(1, count):
         path += f" H{x(i):.1f} V{y(means[i]):.1f}"
     parts.append(f'<path class="best" d="{path} H{width - right:.1f}"/>')
-    for i, (_, team, result) in enumerate(entries):
+    for i, (folder, team, result) in enumerate(entries):
         label = team["description"] if i else "baseline"
         score = result["gift_eval"]
+        mean = f"{score['crps']:.4f} ± {score['crps_sd']:.4f} over {score['runs']} runs"
+        hover = tip(
+            f"Record {i + 1} · {folder.split('_', 1)[0]}",
+            team["description"],
+            f"CRPS {mean}",
+            f"MASE {score['mase']:.4f}",
+            ", ".join(f"@{m['github']}" for m in team["members"]),
+        )
         parts.append(
-            f'<circle class="rec" cx="{x(i):.1f}" cy="{y(means[i]):.1f}" r="5">'
-            f"<title>Record {i + 1}: {score['crps']:.4f} ± {score['crps_sd']:.4f} over "
-            f"{score['runs']} runs</title></circle>"
+            f'<circle class="rec" cx="{x(i):.1f}" cy="{y(means[i]):.1f}" r="5"{hover}>'
+            + f"<title>Record {i + 1}: {mean}</title>" * standalone
+            + "</circle>"
             f'<text class="change" transform="translate({x(i) + 8:.1f},{y(means[i]) - 10:.1f}) '
             f'rotate(-28)">{esc(label)}</text>'
             f'<text class="tick" x="{x(i):.1f}" y="{height - bottom + 20}" '
@@ -360,14 +421,14 @@ def page(entries) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>nanoTSFM</title>
 <meta name="description" content="nanoTSFM: training a time-series foundation model on one A100,
-grinding GIFT-Eval.">
+targeting GIFT-Eval.">
 <link rel="stylesheet" href="{FONTS}">
 <style>{STYLE}</style>
 </head>
 <body>
 <header class="band"><div class="inner">
 <h1><i>nano</i>TSFM</h1>
-<p>Training a time-series foundation model on one A100, grinding GIFT-Eval.</p>
+<p>Training a time-series foundation model on one A100, targeting GIFT-Eval.</p>
 <nav class="buttons">{buttons}</nav>
 </div></header>
 <main>
@@ -377,6 +438,8 @@ grinding GIFT-Eval.">
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
 <h2>Record details</h2>{details(entries)}
 </main>
+<div class="tip" role="tooltip" hidden></div>
+<script>{SCRIPT}</script>
 </body>
 </html>
 """
