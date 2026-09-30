@@ -56,8 +56,8 @@ The template clones a pinned revision of this repository into `/workspace/nanoTS
 `./run.sh setup` with `TORCH=cuda`, and registers the notebook kernel. First boot downloads the
 Python and CUDA dependencies before Jupyter starts. Restarting preserves your checkout and runs
 setup again. The notebook runs the toy check, downloads the data, trains the unchanged baseline,
-plots a forecast, and prints GEP-Val and all 97 GIFT-Eval task scores as aggregate relative CRPS
-and MASE.
+plots a forecast, and prints aggregate relative CRPS and MASE for GEP-Val and the 97-task GIFT-Eval
+suite.
 
 For a terminal workflow, open Jupyter's terminal:
 
