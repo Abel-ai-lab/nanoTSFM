@@ -173,9 +173,11 @@ def progress_chart(entries, standalone=False) -> str:
     def y(v):
         return top + (height - top - bottom) * (hi - v) / (hi - lo)
 
+    title = f"1 record: GIFT-Eval relative CRPS {means[0]:.3f}"
+    if count > 1:
+        title = f"{count} records: GIFT-Eval relative CRPS {means[0]:.3f} → {means[-1]:.3f}"
     parts = [
-        f'<text class="title" x="{left}" y="26">{count} records: GIFT-Eval relative CRPS '
-        f"{means[0]:.3f} → {means[-1]:.3f}</text>"
+        f'<text class="title" x="{left}" y="26">{title}</text>'
         f'<text class="sub" x="{left}" y="48">Mean of three or more seeds per record · 97 tasks, '
         "zero-shot · lower is better</text>"
     ]
