@@ -427,13 +427,14 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         hi = max(runs) + 0.01
         xs = [left + (right - left) * (i + 0.5) / count for i in range(count)]
         scale = (block - top - bottom) / (hi - lo)
-        ys = {v: down + top + scale * (hi - v) for v in runs + means + [v for _, v in marks]}
+        # The axis is reversed so that progress climbs: lower scores sit higher.
+        ys = {v: down + top + scale * (v - lo) for v in runs + means + [v for _, v in marks]}
         parts.append(
             f'<text class="title" x="{4 if narrow else left}" y="{down + 26}">'
-            f"GIFT-Eval relative {name} (lower is better)</text>"
+            f"GIFT-Eval relative {name} (up is better)</text>"
         )
         for tick in ticks(lo, hi):
-            y = down + top + scale * (hi - tick)
+            y = down + top + scale * (tick - lo)
             parts.append(
                 f'<line class="grid" x1="{left}" x2="{right}" y1="{y:.1f}" y2="{y:.1f}"/>'
                 f'<text class="tick" x="{left - 8}" y="{y + 4:.1f}" text-anchor="end">'
@@ -507,10 +508,10 @@ def place(cx, cy, r, text, taken, frame) -> str:
 
 
 def scatter_chart(entries, standalone=False, narrow=False) -> str:
-    """CRPS against MASE, best at the lower right: records and published models as points.
+    """CRPS against MASE, best at the upper right: records and published models as points.
 
-    MASE falls to the right, so progress runs the same way as in the charts by record. A point's
-    size shows its parameter count. The narrow layout for phones labels records by number.
+    Both axes are reversed, so progress climbs to the upper right as in the charts by record. A
+    point's size shows its parameter count. The narrow layout for phones labels records by number.
     """
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
     if narrow:
@@ -525,16 +526,16 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         return left + (width - left - right) * (highs[0] - mase) / (highs[0] - lows[0])
 
     def y(crps):
-        return top + (height - top - bottom) * (highs[1] - crps) / (highs[1] - lows[1])
+        return top + (height - top - bottom) * (crps - lows[1]) / (highs[1] - lows[1])
 
     parts = [
         f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS against MASE '
-        "(lower right is better)</text>"
+        "(upper right is better)</text>"
     ]
     if narrow:
         parts = [
             '<text class="title" x="4" y="24">GIFT-Eval relative CRPS against MASE</text>'
-            '<text class="sub" x="4" y="44">Lower right is better</text>'
+            '<text class="sub" x="4" y="44">Upper right is better</text>'
             f'<text class="sub" x="4" y="{top - 10}">Relative CRPS</text>'
         ]
     for tick in ticks(lows[1], highs[1]):
@@ -549,8 +550,8 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             f'y2="{height - bottom}"/><text class="tick" x="{x(tick):.1f}" '
             f'y="{height - bottom + 20}" text-anchor="middle">{tick:.2f}</text>'
         )
-    # The size legend sits in the corner no model reaches: high MASE with low CRPS.
-    start, line = left + (8 if narrow else 20), height - bottom - 34
+    # The size legend sits in the corner no model reaches: high MASE with low CRPS, the upper left.
+    start, line = left + (8 if narrow else 20), top + 58
     taken = [(start, line - 40, start + (180 if narrow else 230), line + 18)]
     parts.append(
         f'<text class="rlabel" x="{start}" y="{line - 26}">Point size: parameters'
@@ -750,8 +751,7 @@ def page(entries) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>nanoTSFM</title>
-<meta name="description" content="nanoTSFM: training a time-series foundation model on one A100,
-targeting GIFT-Eval.">
+<meta name="description" content="nanoTSFM: hill-climbing GIFT-Eval with one A100 and one hour.">
 <link rel="stylesheet" href="{FONTS}">
 {MATH}
 <style>{STYLE}</style>
@@ -759,7 +759,7 @@ targeting GIFT-Eval.">
 <body>
 <header class="band"><div class="inner">
 <h1><i>nano</i>TSFM</h1>
-<p>Training a time-series foundation model on one A100, targeting GIFT-Eval.</p>
+<p>Hill-climbing GIFT-Eval with one A100 and one hour.</p>
 <nav class="buttons">{buttons}</nav>
 <p class="latest">{latest(entries)}</p>
 </div></header>
