@@ -38,7 +38,7 @@ maintainer reviews it.
 
 ## Versions
 
-Releases are tagged `vMAJOR.MINOR.PATCH`, and the version is in `pyproject.toml`.
+Releases are tagged `vMAJOR.MINOR.PATCH`, and the version is in `pyproject.toml` and `CITATION.cff`.
 
 - **Major:** the score or the rules change, so results are not comparable across majors.
 - **Minor:** training code or dependencies change; the current record is re-verified.
