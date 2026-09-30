@@ -46,11 +46,11 @@ The [rules](docs/rules.md) have the details.
 
 | # | GIFT-Eval CRPS | Description | Date | Record | Contributors |
 | ---: | --- | --- | --- | --- | --- |
-| 1 | 0.6699 ± 0.0073 | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
+| 1 | 0.6699 $\pm$ 0.0073 | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
 [![GIFT-Eval record history][chart]][site]
 
-Each record is the mean ± sd of three or more verified runs; the [record page][site] shows every
+Each record is the mean $\pm$ sd of three or more verified runs; the [record page][site] shows every
 run. A new record must beat the last by
 more than seed noise; the [submission](docs/submission.md) page has the rule and the steps, and
 [`records/`](records/) has every record's report. Dotted lines mark published models on the

@@ -37,7 +37,7 @@ its own record.
 
 ## Evaluation
 
-- [ ] Find a cheap signal that predicts GIFT-Eval. Neither held-out series (correlation −0.15 over
+- [ ] Find a cheap signal that predicts GIFT-Eval. Neither held-out series (correlation $-0.15$ over
   48 runs) nor 16 held-out sources tracked it in the pilot.
 - [ ] Speed up GIFT-Eval: three `electricity/15T` tasks take about 4 minutes each and set the floor
   for any number of workers.

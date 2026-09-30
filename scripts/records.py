@@ -140,7 +140,7 @@ def table(entries) -> str:
         score = result["gift_eval"]
         handles = [m["github"] for m in team["members"]]
         people = ", ".join(f"[@{h}](https://github.com/{h})" for h in handles)
-        crps = f"{score['crps']:.4f} ± {score['crps_sd']:.4f}"
+        crps = f"{score['crps']:.4f} $\\pm$ {score['crps_sd']:.4f}"
         date = folder.split("_", 1)[0]
         link = f"[{folder}](records/{folder}/)"
         rows.append(f"| {number} | {crps} | {team['description']} | {date} | {link} | {people} |")

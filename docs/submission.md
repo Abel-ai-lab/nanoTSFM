@@ -59,9 +59,9 @@ a new pull request; keep one submission per team open at a time.
 ## The record rule
 
 A submission sets a record when its mean GIFT-Eval CRPS is below the record's by at least
-2.33 × 0.007 × √(1/n + 1/m), where n and m are the two run counts and 0.007 is the baseline's seed
-spread: a one-sided test at p < 0.01. With three runs each the gap must be at least 0.013; more
-runs lower it.
+$2.33 \times 0.007 \times \sqrt{1/n + 1/m}$, where $n$ and $m$ are the two run counts and 0.007 is
+the baseline's seed spread: a one-sided test at $p < 0.01$. With three runs each the gap must be at
+least 0.013; more runs lower it.
 
 ## Checks
 

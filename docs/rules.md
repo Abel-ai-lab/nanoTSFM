@@ -17,7 +17,7 @@ baseline scored 0.670 after 2 minutes, about 114th of 131 models on the leaderbo
   datasets the model never trains on, averaged geometrically over tasks. Lower is better; 1 matches
   Seasonal Naive. Like the leaderboard, we compute CRPS as the weighted quantile loss over the nine
   quantile levels. Relative MASE is reported beside it.
-- **Seeds:** runs vary by about ±0.007. Report the mean and spread over three seeds for every
+- **Seeds:** runs vary by about $\pm 0.007$. Report the mean and spread over three seeds for every
   configuration you compare, and treat smaller differences as noise.
 - **Evidence:** a submission reports every run of its final configuration, at least three seeds at
   one commit. It sets a record when its mean beats the record's by the

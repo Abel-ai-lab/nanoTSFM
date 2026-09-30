@@ -17,7 +17,7 @@ are announced with the course.
 
 | Week | Work | Checkpoint |
 | --- | --- | --- |
-| 1 | Set up, run `./run.sh toy`, reproduce the current record with three seeds | Its GIFT-Eval within ±0.01 of the record |
+| 1 | Set up, run `./run.sh toy`, reproduce the current record with three seeds | Its GIFT-Eval within $\pm 0.01$ of the record |
 | 2 | Choose a hypothesis from [directions](directions.md); run cheap pilots, reading GEP-Val and GIFT-Eval together | One-paragraph proposal |
 | 3 | Compare your change with the record | — |
 | 4 | Run the ablation; start the report | — |
