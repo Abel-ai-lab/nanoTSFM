@@ -43,6 +43,7 @@ def load_config(path: Path):
         "device",
         "max_seconds",
         "checkpoint_every",
+        "source_power",
     }
     if set(settings) != required:
         raise ValueError(f"Training fields must be exactly {sorted(required)}")
@@ -54,6 +55,9 @@ def load_config(path: Path):
             raise ValueError(f"{key} must be finite and positive")
     if not isinstance(settings["seed"], int) or settings["seed"] < 0:
         raise ValueError("seed must be a nonnegative integer")
+    power = settings["source_power"]
+    if isinstance(power, bool) or not isinstance(power, (int, float)) or not 0 <= power <= 1:
+        raise ValueError("source_power must be a number from 0 to 1")
     if not isinstance(settings["data"], str) or not settings["data"]:
         raise ValueError("data must name a dataset config or a local parquet folder")
     return model, settings
@@ -227,6 +231,7 @@ def train(
         1,
         settings["steps"] * batch_size,
         settings["seed"],
+        settings["source_power"],
     )
     loader = DataLoader(
         Subset(windows, range(first_step * batch_size, len(windows))),

@@ -95,7 +95,11 @@ def toy(split: str, seed: int = 7, series: int = 24, length: int = 512):
 
 
 class Windows(Dataset):
-    def __init__(self, dataset, context: int, horizon: int, count: int, seed: int):
+    def __init__(self, dataset, context: int, horizon: int, count: int, seed: int, power=0.0):
+        """Draw a source with weight (its series count) ** power, then a series from it.
+
+        Power 0 weights sources equally, 1 weights every series equally.
+        """
         self.context, self.horizon, self.count, self.seed = context, horizon, count, seed
         sources = {}
         for source, values in zip(dataset["source"], arrays(dataset), strict=True):
@@ -104,6 +108,8 @@ class Windows(Dataset):
         self.sources = list(sources.values())
         if not self.sources or min(context, horizon, count) <= 0:
             raise ValueError("No series longer than the horizon, or an invalid window/count")
+        weights = np.array([len(source) for source in self.sources], dtype=float) ** power
+        self.weights = weights / weights.sum() if power else None
 
     def __len__(self):
         return self.count
@@ -111,7 +117,10 @@ class Windows(Dataset):
     def __getitem__(self, index):
         rng = np.random.default_rng(np.random.SeedSequence([self.seed, int(index)]))
         for _ in range(100):
-            source = self.sources[rng.integers(len(self.sources))]
+            if self.weights is None:  # the baseline's uniform draw, kept for exact reproduction
+                source = self.sources[rng.integers(len(self.sources))]
+            else:
+                source = self.sources[rng.choice(len(self.sources), p=self.weights)]
             group = source[rng.integers(len(source))]
             channels = np.sort(
                 rng.choice(

@@ -15,4 +15,4 @@ training:
   device: auto
   max_seconds: 3600
   checkpoint_every: 1000
-  source_power: 0
+  source_power: 0.5

@@ -15,3 +15,4 @@ training:
   device: cpu
   max_seconds: 120
   checkpoint_every: 4
+  source_power: 0

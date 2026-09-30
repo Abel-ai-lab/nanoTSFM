@@ -47,6 +47,7 @@ The [rules](docs/rules.md) have the details.
 | # | GIFT-Eval CRPS | Description | Date | Record | Contributors |
 | ---: | --- | --- | --- | --- | --- |
 | 1 | 0.6699 $\pm$ 0.0073 | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
+| 2 | 0.6334 $\pm$ 0.0033 | Weight every series equally | 2026-09-29 | [2026-09-29_Shu-Wan](records/2026-09-29_Shu-Wan/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
 [![GIFT-Eval record history][chart]][site]
 
