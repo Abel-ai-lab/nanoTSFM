@@ -51,9 +51,9 @@ a source uniformly, then a series, then a crop.
 
 | Slice | Series per source | Points per series | Series | Points | Download |
 | --- | --- | --- | --- | --- | --- |
-| GEP-S (small) | ≤50 | ≤4,096 | 3.4k | 33M | 94 MB |
-| **GEP-M** (medium, default) | ≤1,000 | ≤8,192 | 32.9k | 252M | 615 MB |
-| GEP-L (large) | ≤50,000, 5 shards of large sources | ≤8,192 | 500k | 2.1B | 6.2 GB |
+| GEP-S (small) | $\leq$ 50 | $\leq$ 4,096 | 3.4k | 33M | 94 MB |
+| **GEP-M** (medium, default) | $\leq$ 1,000 | $\leq$ 8,192 | 32.9k | 252M | 615 MB |
+| GEP-L (large) | $\leq$ 50,000, 5 shards of large sources | $\leq$ 8,192 | 500k | 2.1B | 6.2 GB |
 
 GEP-M is the smallest slice that gives the 2-minute baseline its full score. More data pays off
 with longer training: at 20,000 steps, GIFT-Eval was 0.693 on GEP-M and 0.661 on GEP-L.
@@ -66,7 +66,7 @@ Each holds up to 100 held-out series per source (latest 8,192 points). The `GEP-
 defines their tasks the way GIFT-Eval does:
 
 - One task per source and term. Short horizons follow GIFT-Eval's table by frequency (48 steps for
-  hourly and minute data, 30 for daily, 12 for monthly); medium and long terms are 10× and 15× that,
+  hourly and minute data, 30 for daily, 12 for monthly); medium and long terms are $10\times$ and $15\times$ that,
   for sub-daily sources only.
 - Each task forecasts the last k horizons of every long-enough series, with k = ceil(10% of the
   shortest series ÷ horizon), between 1 and 20. Tasks with fewer than 10 forecasts are dropped.

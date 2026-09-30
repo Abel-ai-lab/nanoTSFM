@@ -7,8 +7,9 @@ meta:
 
 # Rules
 
-Improve GIFT-Eval with at most one hour of training on one A100 80GB-class GPU. The baseline scores
-0.666 after 2 minutes, about 113th of 131 models on the leaderboard.
+Set the record on GIFT-Eval with at most one hour of training on one A100 80GB-class GPU. The
+baseline scored 0.670 after 2 minutes, about 114th of 131 models on the leaderboard; the
+[README](../README.md#world-record) has the current record.
 
 ## Score
 
@@ -16,9 +17,12 @@ Improve GIFT-Eval with at most one hour of training on one A100 80GB-class GPU. 
   datasets the model never trains on, averaged geometrically over tasks. Lower is better; 1 matches
   Seasonal Naive. Like the leaderboard, we compute CRPS as the weighted quantile loss over the nine
   quantile levels. Relative MASE is reported beside it.
-- **Seeds:** runs vary by about ±0.004. Report the mean and spread over three seeds for every
+- **Seeds:** runs vary by about $\pm 0.007$. Report the mean and spread over three seeds for every
   configuration you compare, and treat smaller differences as noise.
-- `./run.sh eval <run>` computes the score in about 4 minutes on 8 CPU cores. The benchmark is
+- **Evidence:** a submission reports every run of its final configuration, at least three seeds at
+  one commit. It sets a record when its mean beats the record's by the
+  [record rule](submission.md#the-record-rule): at least 0.013 with three runs each.
+- `./run.sh eval <run>` computes the score in about 5 minutes on 8 CPU cores. The benchmark is
   public; your report explains how you chose your final model.
 
 ## Diagnostics
@@ -36,8 +40,8 @@ is the challenge.
 - At most 3,600 seconds of training per run, as `run.json` records. Setup, data loading,
   validation, checkpointing and evaluation are off the clock.
 - Final runs use an A100 80GB. Develop on any GPU; final runs on other hardware may be re-timed.
-- Maintainers verify every submission by retraining it from its code on an A100 80GB: the
-  retrain must finish within the cap and score within 0.01 of the reported score.
+- Maintainers verify every submission by retraining each run from its code on an A100 80GB: each
+  retrain must finish within the cap and score within 0.01 of its report.
 
 ## Data
 
@@ -50,13 +54,13 @@ is the challenge.
 
 ## Fixed
 
-- `src/nanotsfm/evaluation.py`, `configs/gift-full.json` and `scripts/submission.py`: maintainers
-  verify every submission with the official versions of these files.
+- `src/nanotsfm/evaluation.py`, `configs/gift-full.json`, `scripts/submission.py` and `.github/`:
+  maintainers verify every submission with the official versions of these files.
 - The forecast interface in the [README](../README.md), which the evaluator calls.
 
 Everything else is yours to change.
 
 ## Open source
 
-Your repository must be public, and the commit you submit must be pushed. Submissions arrive as pull
-requests; see [contributing](../CONTRIBUTING.md).
+Your fork must be public, and the runs' commit must be pushed. Submissions arrive as pull requests;
+see [submission](submission.md).

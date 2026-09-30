@@ -1,0 +1,29 @@
+name: Record page
+on:
+  push:
+    branches: [main]
+    paths: ["records/**", "scripts/records.py"]
+  workflow_dispatch:
+# Build the record page from records/ and publish it to GitHub Pages; nothing is committed.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  page:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --no-project --with pyyaml python scripts/records.py site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5
