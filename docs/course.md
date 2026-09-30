@@ -34,8 +34,8 @@ The project is planned for about two-thirds of the eight weeks; the last two are
 | 1 | Sep 29 – Oct 5 | Find a teammate; set up and run `./run.sh toy` | Team and project chosen by October 7 |
 | 2 | Oct 6 – Oct 12 | Reproduce the current record with three seeds | Its GIFT-Eval within $\pm 0.01$ of the record |
 | 3 | Oct 13 – Oct 19 | Choose a hypothesis from [directions](directions.md); run cheap pilots, reading GEP-Val and GIFT-Eval together | One-paragraph proposal |
-| 4 | Oct 20 – Oct 26 | Implement the change and compare it with the record | — |
-| 5 | Oct 27 – Nov 2 | Run the ablation; start the report | — |
+| 4 | Oct 20 – Oct 26 | Implement the change and compare it with the record | - |
+| 5 | Oct 27 – Nov 2 | Run the ablation; start the report | - |
 | 6 | Nov 3 – Nov 9 | Final runs with three seeds, GIFT-Eval, report, `./run.sh submit` | A first pull request |
 | 7–8 | Nov 10 – Nov 23 | Fix what the checks and the review find; improve and submit again | Pull request by November 23, 11:59 PM |
 
@@ -43,6 +43,35 @@ The project is planned for about two-thirds of the eight weeks; the last two are
 
 Each team receives a \$50 Runpod credit code; a typical project uses \$20–40 of A100 time. Students
 with an ASU Research Computing account can also use the Sol cluster at no cost.
+
+## Run on Runpod
+
+1. Redeem the course credit in the Runpod account you will use to create the pod.
+2. Open the [nanoTSFM template](https://console.runpod.io/hub/template/2zp46nns9i), choose one
+   **A100 80GB** with at least 8 CPU cores, and deploy an on-demand pod. Check its hourly price.
+3. Wait for setup to finish in the pod logs, then open **Connect -> Jupyter Lab**. Open
+   `nanoTSFM/runpod.ipynb`, select **nanoTSFM (Python 3.13)**, and run the cells in order.
+
+The template clones a pinned revision of this repository into `/workspace/nanoTSFM`, runs
+`./run.sh setup` with `TORCH=cuda`, and registers the notebook kernel. First boot downloads the
+Python and CUDA dependencies before Jupyter starts. Restarting preserves your checkout and runs
+setup again. The notebook runs the toy check, downloads the data, trains the unchanged baseline,
+plots a forecast, and prints GEP-Val and all 97 GIFT-Eval task scores as aggregate relative CRPS
+and MASE.
+
+For a terminal workflow, open Jupyter's terminal:
+
+```shell
+cd /workspace/nanoTSFM
+./run.sh toy
+./run.sh data
+./run.sh train baseline
+./run.sh eval baseline
+```
+
+Download `runs/baseline` before terminating the pod: termination deletes its files. **Terminate the
+pod when finished** to end GPU and pod-storage charges. Stopping retains paid storage. Setup,
+downloads and idle time are billed while the pod runs.
 
 ## Hand-in
 
