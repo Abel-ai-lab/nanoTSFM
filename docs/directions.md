@@ -21,8 +21,8 @@ Data choices moved GIFT-Eval most and are the main defense against overfitting t
   GEP-L scored 0.661 against 0.693 for GEP-M (see [data](data.md#training-slices)). The full
   corpus is 975 GB.
 - **Coverage:** longer training hurt GIFT-Eval most where the corpus is thin: yearly, 10- and
-  15-minute, and monthly data, and the Econ/Fin domain. Resampling or synthetic series can fill
-  those gaps.
+  15-minute, and monthly data, and the Econ/Fin domain. Resampling those sources can fill the
+  gaps.
 - **Windows:** crop length and position, and how wide multivariate series are subsampled.
 - **Duplicates:** some series appear under two sources, for example related PEMS datasets, which
   the split by name cannot see; removing them may change what the model learns.

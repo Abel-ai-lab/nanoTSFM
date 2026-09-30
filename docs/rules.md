@@ -47,9 +47,9 @@ is the challenge.
 
 - Allowed: any part of [GIFT-Eval Pretrain](https://huggingface.co/datasets/Salesforce/GiftEvalPretrain)
   (revision 6830b62), in any selection, mixture or preprocessing, including the
-  [GEP slices](data.md), and synthetic series your own code generates.
-- Not allowed: GIFT-Eval test data, other real datasets, pretrained weights, and other models'
-  forecasts. Training on GEP-Val or GEP-Test series is allowed but voids those diagnostics.
+  [GEP slices](data.md).
+- Not allowed: GIFT-Eval test data, other datasets, synthetic series, pretrained weights, and other
+  models' forecasts. Training on GEP-Val or GEP-Test series is allowed but voids those diagnostics.
 - Your code must not read GIFT-Eval data while training or forecasting.
 
 ## Fixed
