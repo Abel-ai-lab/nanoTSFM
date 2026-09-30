@@ -205,7 +205,7 @@ def people(team: dict) -> str:
 
 def progress_chart(entries, standalone=False) -> str:
     """MASE, then CRPS: every verified run as a gray dot and the record as a step line."""
-    width, left, right, top, plot, gap, bottom = 960, 64, 200, 52, 250, 36, 44
+    width, left, right, top, plot, gap, bottom = 960, 64, 200, 76, 250, 24, 44
     height = 2 * (top + plot) + gap + bottom
     count = len(entries)
 
