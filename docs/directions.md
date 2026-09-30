@@ -24,8 +24,6 @@ Data choices moved GIFT-Eval most and are the main defense against overfitting t
   15-minute, and monthly data, and the Econ/Fin domain. Resampling those sources can fill the
   gaps.
 - **Windows:** crop length and position, and how wide multivariate series are subsampled.
-- **Duplicates:** some series appear under two sources, for example related PEMS datasets, which
-  the split by name cannot see; removing them may change what the model learns.
 
 ## Model
 
