@@ -79,8 +79,9 @@ main {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 3
 h2 {{ color: var(--ink); font-size: 22px; font-weight: 600; margin: 44px 0 12px; }}
 .figure {{ width: min(1040px, calc(100vw - 40px)); position: relative; left: 50%;
   transform: translateX(-50%); margin: 8px 0 0; }}
-.figure .scroll svg {{ min-width: 860px; }}
 .figure + .figure {{ margin-top: 20px; }}
+.narrow {{ display: none; }}
+.narrow svg {{ max-width: 480px; margin: 0 auto; }}
 figcaption {{ color: var(--muted); font-size: 14px; margin-top: 6px; }}
 svg {{ display: block; width: 100%; height: auto; }}
 svg .title {{ fill: var(--ink); font: 600 17px "IBM Plex Sans", Arial, sans-serif; }}
@@ -117,7 +118,25 @@ summary {{ cursor: pointer; color: var(--ink); }}
 .body {{ padding-top: 10px; display: grid; gap: 14px; }}
 .body p {{ margin: 0; }}
 .changes {{ margin: 0; padding-left: 18px; font: 14px "IBM Plex Mono", Menlo, monospace; }}
-@media (max-width: 600px) {{ .band h1 {{ font-size: 36px; }} dl {{ grid-template-columns: 1fr; }} }}
+.body .scroll svg {{ min-width: 560px; }}
+.runs td:last-child {{ white-space: nowrap; }}
+/* Below 900px the figures switch to their narrow layouts. */
+@media (max-width: 900px) {{ .wide {{ display: none; }} .narrow {{ display: block; }} }}
+/* On phones each record becomes a short block in place of a table row. */
+@media (max-width: 600px) {{
+  .band h1 {{ font-size: 36px; }} dl {{ grid-template-columns: 1fr; }}
+  .records, .records tbody {{ display: block; }}
+  .records tr {{ display: flex; flex-wrap: wrap; gap: 2px 14px; padding: 10px 0;
+    border-bottom: 1px solid var(--rule); }}
+  .records tr:first-child {{ display: none; }}
+  .records td {{ border: 0; padding: 0; }}
+  .records td:nth-child(2) {{ order: 1; }}
+  .records td:nth-child(3) {{ flex: 1 0 80%; color: var(--ink); }}
+  .records td[data-label]::before {{ content: attr(data-label) " "; color: var(--muted);
+    font-family: "IBM Plex Sans", Arial, sans-serif; }}
+  .runs th, .runs td {{ padding-right: 8px; font-size: 13px; }}
+  .runs th:last-child, .runs td:last-child {{ display: none; }}
+}}
 """
 # The README shows the figures as images, outside the page's styles.
 STANDALONE = """<style>
@@ -148,17 +167,21 @@ function show(point) {
   const title = document.createElement("b");
   title.textContent = head;
   tip.replaceChildren(title, rest.join("\\n"));
-  const box = point.getBoundingClientRect();
-  let left = box.right + 10;
-  if (left + tip.offsetWidth > innerWidth - 8) left = box.left - 10 - tip.offsetWidth;
-  const top = box.top + box.height / 2 - tip.offsetHeight / 2;
-  tip.style.left = Math.max(8, left) + "px";
-  tip.style.top = Math.max(8, Math.min(innerHeight - tip.offsetHeight - 8, top)) + "px";
+  const box = point.getBoundingClientRect(), wide = tip.offsetWidth, tall = tip.offsetHeight;
+  let left = box.right + 10, top = box.top + box.height / 2 - tall / 2;
+  if (left + wide > innerWidth - 8) left = box.left - 10 - wide;
+  if (left < 8) {
+    left = Math.min(Math.max(8, box.left + box.width / 2 - wide / 2), innerWidth - wide - 8);
+    top = box.bottom + 10 + tall > innerHeight - 8 ? box.top - 10 - tall : box.bottom + 10;
+  }
+  tip.style.left = left + "px";
+  tip.style.top = Math.max(8, Math.min(innerHeight - tall - 8, top)) + "px";
 }
 function nearest(event) {
-  let best = null, reach = 10;
+  let best = null, reach = event.pointerType === "touch" ? 24 : 10;
   for (const point of points) {
     const box = point.getBoundingClientRect();
+    if (!box.width) continue;
     const x = box.left + box.width / 2 - event.clientX;
     const away = Math.hypot(x, box.top + box.height / 2 - event.clientY) - box.width / 2;
     if (away < reach) [best, reach] = [point, away];
@@ -273,15 +296,21 @@ def ticks(lo, hi):
         tick = round(tick + 0.05, 2)
 
 
-def progress_chart(entries, standalone=False) -> str:
-    """MASE and CRPS by record, side by side: each run a gray dot, the record a step line."""
-    width, height, top, bottom = 1040, 400, 86, 44
+def progress_chart(entries, standalone=False, narrow=False) -> str:
+    """MASE and CRPS by record: each run a gray dot, the record a step line.
+
+    The two panels sit side by side, or one above the other in the narrow layout for phones.
+    """
+    # One panel's width and height, then its top, bottom, left and right margins.
+    span, block, top, bottom, lead, trail = 520, 400, 86, 44, 64, 146
+    if narrow:
+        span, block, top, bottom, lead, trail = 400, 350, 50, 44, 46, 92
     count = len(entries)
     run_tip, record_tip, _ = tips(standalone)
     parts = []
     for panel, metric in enumerate(("mase", "crps")):
-        left = panel * width // 2 + 64
-        right = (panel + 1) * width // 2 - 146
+        across, down = (0, panel * block) if narrow else (panel * span, 0)
+        left, right = across + lead, across + span - trail
         name = metric.upper()
         key = f"geometric_relative_{metric}"
         runs = [run["gift_eval"][key] for _, _, r in entries for run in r["runs"]]
@@ -290,24 +319,25 @@ def progress_chart(entries, standalone=False) -> str:
         lo = min(runs + [value for _, value in marks]) - 0.01
         hi = max(runs) + 0.01
         xs = [left + (right - left) * (i + 0.5) / count for i in range(count)]
-        span = (height - top - bottom) / (hi - lo)
-        ys = {v: top + span * (hi - v) for v in runs + means + [v for _, v in marks]}
+        scale = (block - top - bottom) / (hi - lo)
+        ys = {v: down + top + scale * (hi - v) for v in runs + means + [v for _, v in marks]}
         parts.append(
-            f'<text class="title" x="{left}" y="26">GIFT-Eval relative {name} '
-            "(lower is better)</text>"
+            f'<text class="title" x="{4 if narrow else left}" y="{down + 26}">'
+            f"GIFT-Eval relative {name} (lower is better)</text>"
         )
         for tick in ticks(lo, hi):
-            y = top + span * (hi - tick)
+            y = down + top + scale * (hi - tick)
             parts.append(
                 f'<line class="grid" x1="{left}" x2="{right}" y1="{y:.1f}" y2="{y:.1f}"/>'
                 f'<text class="tick" x="{left - 8}" y="{y + 4:.1f}" text-anchor="end">'
                 f"{tick:.2f}</text>"
             )
         for model, value in marks:
+            label = esc(model) if narrow else f"{esc(model)} {value:.3f}"
             parts.append(
                 f'<line class="ref" x1="{left}" x2="{right}" y1="{ys[value]:.1f}" '
                 f'y2="{ys[value]:.1f}"/><text class="rlabel" x="{right + 8}" '
-                f'y="{ys[value] + 4:.1f}">{esc(model)} {value:.3f}</text>'
+                f'y="{ys[value] + 4:.1f}">{label}</text>'
             )
         for i, (_, _, result) in enumerate(entries):
             for j, run in enumerate(result["runs"]):
@@ -326,15 +356,18 @@ def progress_chart(entries, standalone=False) -> str:
             parts.append(
                 f'<circle class="rec" cx="{xs[i]:.1f}" cy="{y:.1f}" r="5"'
                 f"{record_tip(i + 1, folder, team, result)}/>"
-                f'<text class="change" transform="translate({xs[i] + 8:.1f},{y - 10:.1f}) '
+                # The narrow layout has no room for the change; the record's number stands for it.
+                + f'<text class="change" transform="translate({xs[i] + 8:.1f},{y - 10:.1f}) '
                 f'rotate(-28)">{esc(label)}</text>'
-                f'<text class="tick" x="{xs[i]:.1f}" y="{height - bottom + 20}" '
+                * (not narrow)
+                + f'<text class="tick" x="{xs[i]:.1f}" y="{down + block - bottom + 20}" '
                 f'text-anchor="middle">{i + 1}</text>'
             )
         parts.append(
-            f'<text class="sub" x="{(left + right) / 2:.1f}" y="{height - 6}" '
+            f'<text class="sub" x="{(left + right) / 2:.1f}" y="{down + block - 6}" '
             'text-anchor="middle">Record</text>'
         )
+    width, height = (span, 2 * block) if narrow else (2 * span, block)
     return svg(width, height, "MASE and CRPS by record", parts, standalone)
 
 
@@ -366,13 +399,15 @@ def place(cx, cy, r, text, taken, frame) -> str:
     return f'x="{x:.1f}" y="{y + tall - 2:.1f}" text-anchor="{anchor}"'
 
 
-def scatter_chart(entries, standalone=False) -> str:
+def scatter_chart(entries, standalone=False, narrow=False) -> str:
     """CRPS against MASE, best at the lower right: records and published models as points.
 
     MASE falls to the right, so progress runs the same way as in the charts by record. A point's
-    size shows its parameter count.
+    size shows its parameter count. The narrow layout for phones labels records by number.
     """
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
+    if narrow:
+        width, height, left, right, top, bottom = 400, 430, 46, 14, 78, 50
     _, record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
     points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
@@ -389,6 +424,12 @@ def scatter_chart(entries, standalone=False) -> str:
         f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS against MASE '
         "(lower right is better)</text>"
     ]
+    if narrow:
+        parts = [
+            '<text class="title" x="4" y="24">GIFT-Eval relative CRPS against MASE</text>'
+            '<text class="sub" x="4" y="44">Lower right is better</text>'
+            f'<text class="sub" x="4" y="{top - 10}">Relative CRPS</text>'
+        ]
     for tick in ticks(lows[1], highs[1]):
         parts.append(
             f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
@@ -402,11 +443,12 @@ def scatter_chart(entries, standalone=False) -> str:
             f'y="{height - bottom + 20}" text-anchor="middle">{tick:.2f}</text>'
         )
     # The size legend sits in the corner no model reaches: high MASE with low CRPS.
-    start, line = left + 20, height - bottom - 34
-    taken = [(start, line - 40, start + 230, line + 18)]
+    start, line = left + (8 if narrow else 20), height - bottom - 34
+    taken = [(start, line - 40, start + (180 if narrow else 230), line + 18)]
     parts.append(
-        f'<text class="rlabel" x="{start}" y="{line - 26}">Point size: parameters (log scale)'
-        "</text>"
+        f'<text class="rlabel" x="{start}" y="{line - 26}">Point size: parameters'
+        + " (log scale)" * (not narrow)
+        + "</text>"
     )
     for parameters in (100_000, 10_000_000, 1_000_000_000):
         r, label = radius(parameters), size(parameters)
@@ -439,6 +481,8 @@ def scatter_chart(entries, standalone=False) -> str:
         label = (
             f"{i + 1}. {team['description'] if i else 'baseline'} · {size(result['parameters'])}"
         )
+        if narrow:
+            label = str(i + 1)
         parts.append(
             f'<circle class="rec" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
             f"{record_tip(i + 1, folder, team, result)}/>"
@@ -447,7 +491,7 @@ def scatter_chart(entries, standalone=False) -> str:
             f'<text class="change" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
     for cx, cy, r, name, scores in models:
-        label = f"{name} · {size(scores['parameters'])}"
+        label = name if narrow else f"{name} · {size(scores['parameters'])}"
         parts.append(
             f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
             f"{model_tip(name, scores)}/>"
@@ -459,8 +503,8 @@ def scatter_chart(entries, standalone=False) -> str:
     parts.append(
         f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 8}" '
         'text-anchor="middle">Relative MASE</text>'
-        f'<text class="sub" transform="translate(16,{middle:.1f}) rotate(-90)" '
-        'text-anchor="middle">Relative CRPS</text>'
+        + f'<text class="sub" transform="translate(16,{middle:.1f}) rotate(-90)" '
+        'text-anchor="middle">Relative CRPS</text>' * (not narrow)
     )
     return svg(width, height, "CRPS against MASE", parts + labels, standalone)
 
@@ -542,13 +586,14 @@ def records_table(entries) -> str:
     rows = "".join(
         f'<tr><td class="n">{i}</td><td class="n">{esc(f.split("_", 1)[0])}</td>'
         f"<td>{esc(t['description'])}</td>"
-        f'<td class="n">{r["gift_eval"]["crps"]:.4f} ± {r["gift_eval"]["crps_sd"]:.4f}</td>'
-        f'<td class="n">{r["gift_eval"]["mase"]:.4f}</td>'
-        f'<td class="n">{r["gift_eval"]["runs"]}</td><td>{people(t)}</td></tr>'
+        f'<td class="n" data-label="CRPS">{r["gift_eval"]["crps"]:.4f} ± '
+        f"{r['gift_eval']['crps_sd']:.4f}</td>"
+        f'<td class="n" data-label="MASE">{r["gift_eval"]["mase"]:.4f}</td>'
+        f'<td class="n" data-label="Runs">{r["gift_eval"]["runs"]}</td><td>{people(t)}</td></tr>'
         for i, (f, t, r) in enumerate(entries, 1)
     )
     return (
-        '<div class="scroll"><table><tr><th>#</th><th>Date</th><th>Change</th>'
+        '<div class="scroll"><table class="records"><tr><th>#</th><th>Date</th><th>Change</th>'
         "<th>GIFT-Eval CRPS</th><th>MASE</th><th>Runs</th><th>Contributors</th></tr>"
         f"{rows}</table></div>"
     )
@@ -569,7 +614,7 @@ def details(entries) -> str:
         out.append(
             f"<details><summary>Record {i}: {esc(team['description'])} "
             f'<span class="dim">({result["gift_eval"]["crps"]:.4f})</span></summary>'
-            '<div class="body"><div class="scroll"><table><tr><th>Seed</th>'
+            '<div class="body"><div class="scroll"><table class="runs"><tr><th>Seed</th>'
             "<th>GIFT-Eval CRPS</th><th>MASE</th><th>GEP-Val</th><th>GEP-Test</th>"
             f"<th>Training</th><th>GPU</th></tr>{runs}</table></div>"
             f"<p><b>Change from the previous record</b></p>{changes(result, previous)}"
@@ -610,8 +655,10 @@ targeting GIFT-Eval.">
 <nav class="buttons">{buttons}</nav>
 </div></header>
 <main>
-<figure class="figure"><div class="scroll">{scatter_chart(entries)}</div></figure>
-<figure class="figure"><div class="scroll">{progress_chart(entries)}</div>
+<figure class="figure wide">{scatter_chart(entries)}</figure>
+<figure class="figure wide">{progress_chart(entries)}<figcaption>{FOOTNOTE}</figcaption></figure>
+<figure class="figure narrow">{scatter_chart(entries, narrow=True)}</figure>
+<figure class="figure narrow">{progress_chart(entries, narrow=True)}
 <figcaption>{FOOTNOTE}</figcaption></figure>
 <h2>The task</h2><p>{ABOUT}</p><dl>{setup}</dl>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
