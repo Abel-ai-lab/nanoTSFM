@@ -126,6 +126,17 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 [modded-nanotabpfn](https://github.com/borawhocodess/modded-nanotabpfn) and
 [nanotabicl](https://github.com/soda-inria/nanotabicl).
 
+## Citation
+
+```bibtex
+@misc{nanotsfm,
+  author = {Zhu, Hank and Wan, Shu},
+  title = {{nanoTSFM}},
+  year = {2026},
+  url = {https://github.com/Abel-ai-lab/nanoTSFM}
+}
+```
+
 [python-badge]: https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white
 [python]: https://www.python.org/downloads/
 [license-badge]: https://img.shields.io/badge/license-MIT-2E7A58

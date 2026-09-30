@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: If you use nanoTSFM, please cite it as below.
+type: software
+title: nanoTSFM
+abstract: >-
+  An open benchmark for training small time-series foundation models on a fixed budget: at most
+  one hour on one GPU, scored zero-shot on GIFT-Eval.
+authors:
+  - family-names: Zhu
+    given-names: Hank
+  - family-names: Wan
+    given-names: Shu
+repository-code: https://github.com/Abel-ai-lab/nanoTSFM
+license: MIT
+version: 1.0.0
+date-released: "2026-09-29"
+keywords:
+  - time series
+  - forecasting
+  - foundation model
+  - benchmark
