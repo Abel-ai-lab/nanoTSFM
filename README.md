@@ -49,15 +49,9 @@ The [rules](docs/rules.md) have the details.
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
-The figure places each record by its two GIFT-Eval scores, relative MASE and relative CRPS; lower
-left is better. Gray points are published models on the GIFT-Eval leaderboard, including
-Toto-2.0-4m, the same design trained far longer on far more data. The baseline sits about 114th of
-the leaderboard's 131 models.
-
-Each record is the $\text{mean} \pm \text{sd}$ of three or more verified runs, and records are
-decided on CRPS. A new record must beat the last by more than seed noise; the
-[submission](docs/submission.md) page has the rule and the steps, and [`records/`](records/) has
-every record's report. The [record page][site] shows each metric by record and every run.
+Records are orange and published models are gray; lower left is better. A record is the
+$\text{mean} \pm \text{sd}$ of three or more verified runs and is decided on CRPS. See the
+[record page][site] for every run and [submission](docs/submission.md) for how to set a record.
 
 ## Data
 
