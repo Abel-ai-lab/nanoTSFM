@@ -67,7 +67,8 @@ see [submission](submission.md).
 
 ## Credit
 
-- **Records:** each new record is announced in a short post that credits its contributors.
+- **Records:** the [record page](https://abel-ai-lab.github.io/nanoTSFM/) and the README's badge
+  show the latest record and its contributors, and update when the record merges.
 - **Notable submissions:** a submission that misses the record or breaks a rule but tests a useful
   idea can be listed with its verified score under Notable submissions in the README, so the idea
   is not lost.
