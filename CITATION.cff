@@ -6,10 +6,7 @@ abstract: >-
   An open benchmark for training small time-series foundation models on a fixed budget: at most
   one hour on one GPU, scored zero-shot on GIFT-Eval.
 authors:
-  - family-names: Zhu
-    given-names: Hank
-  - family-names: Wan
-    given-names: Shu
+  - name: Abel AI Lab
 repository-code: https://github.com/Abel-ai-lab/nanoTSFM
 license: MIT
 version: 1.0.0
