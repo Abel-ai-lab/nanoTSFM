@@ -1,6 +1,6 @@
 """Build the record page from records/*/, or print the README's record table.
 
-python scripts/records.py DIR      # DIR/index.html, DIR/records.svg and DIR/scatter.svg
+python scripts/records.py DIR      # the page, its two figures and the badge, in DIR
 python scripts/records.py --table
 """
 
@@ -92,6 +92,8 @@ a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outl
 .band .inner {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 56px 44px; }}
 .band h1 {{ margin: 0; color: #F4F5F1; font-size: 44px; font-weight: 600; line-height: 1.1; }}
 .band p {{ margin: 12px 0 24px; font-size: 18px; max-width: 60ch; }}
+.band .latest {{ margin: 20px 0 0; font-size: 14px; max-width: none; }}
+.band .latest a, .band .latest b {{ color: #F4F5F1; }}
 .buttons {{ display: flex; flex-wrap: wrap; gap: 10px; }}
 .buttons a {{ display: inline-flex; align-items: center; gap: 8px; color: #F4F5F1;
   border: 1px solid #3A4A5A; border-radius: 6px; padding: 7px 14px; text-decoration: none;
@@ -269,6 +271,25 @@ def size(parameters: int) -> str:
 def radius(parameters: int) -> float:
     """Point radius in the overall plot, growing with the logarithm of the parameter count."""
     return max(3.0, 3 * math.log10(parameters) - 12)
+
+
+def latest(entries) -> str:
+    """The latest record in one line, with its contributors."""
+    folder, team, result = entries[-1]
+    return (
+        f"Latest record: <b>{result['gift_eval']['crps']:.3f}</b> relative CRPS, "
+        f"{esc(team['description'])}, by {people(team)} on {esc(folder.split('_', 1)[0])}"
+    )
+
+
+def badge(entries) -> str:
+    """The README's record badge, as a shields.io endpoint."""
+    _, team, result = entries[-1]
+    who = ", ".join(f"@{m['github']}" for m in team["members"])
+    message = f"{result['gift_eval']['crps']:.3f} by {who}"
+    return json.dumps(
+        {"schemaVersion": 1, "label": "world record", "message": message, "color": "D9622B"}
+    )
 
 
 def people(team: dict) -> str:
@@ -740,6 +761,7 @@ targeting GIFT-Eval.">
 <h1><i>nano</i>TSFM</h1>
 <p>Training a time-series foundation model on one A100, targeting GIFT-Eval.</p>
 <nav class="buttons">{buttons}</nav>
+<p class="latest">{latest(entries)}</p>
 </div></header>
 <main>
 <figure class="figure wide">{scatter_chart(entries)}</figure>
@@ -771,6 +793,7 @@ def main():
     (out / "index.html").write_text(page(entries))
     (out / "records.svg").write_text(progress_chart(entries, standalone=True))
     (out / "scatter.svg").write_text(scatter_chart(entries, standalone=True))
+    (out / "badge.json").write_text(badge(entries))
     print(out / "index.html")
 
 
