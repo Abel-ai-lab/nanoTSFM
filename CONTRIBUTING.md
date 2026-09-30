@@ -3,7 +3,7 @@
 ## Submitting a result
 
 1. Fork this repository and work on a branch of your fork, which must be public.
-2. Merge `main`, then train three or more seeds of your final configuration, score them on
+2. Merge `main`, then train three or more repeated runs of your final configuration, score them on
    GIFT-Eval and package them (see [submission](docs/submission.md)):
 
    ```shell
@@ -31,7 +31,7 @@ maintainer reviews it.
   `uv.lock` alone, so `main` keeps training the current record and open submissions stay valid. A
   check fails any pull request that changes these files without a record folder.
 - **When training must change** (a bug fix, a dependency update), a maintainer re-runs the current
-  record's seeds at the new code and adds the `changes training` label. The change ships in a new
+  record's runs at the new code and adds the `changes training` label. The change ships in a new
   minor version. Open submissions then merge `main` and train again.
 - **The score's files**, `src/nanotsfm/evaluation.py` and `configs/gift-full.json`, change only in
   a new major version. Maintainers own `scripts/submission.py` and `.github/`.

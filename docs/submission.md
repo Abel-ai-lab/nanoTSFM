@@ -36,7 +36,7 @@ commit, so any record can be reproduced and you may start from any of them.
 1. Fork nanoTSFM, clone your fork and work on a branch. Copy
    [`records/template/`](../records/template/README.md) to `records/<YYYY-MM-DD>_<name>/`, with
    hyphens for spaces, and fill in its README.
-2. Commit and push your code, then train and score three seeds of the final configuration:
+2. Commit and push your code, then train and score three repeated runs of the final configuration:
 
    ```shell
    ./run.sh train final-s7 configs/my.yaml 7   # the last argument is the seed
@@ -52,7 +52,7 @@ commit, so any record can be reproduced and you may start from any of them.
    template asks for what changed and why, your results beside the record, an ablation, and how to
    reproduce.
 
-Report other seeds and ablations in the README. If you train on data your own code builds, give the
+Report other runs and ablations in the README. If you train on data your own code builds, give the
 command in the README; verification runs it. To try again, push new runs to the same branch or open
 a new pull request; keep one submission per team open at a time.
 

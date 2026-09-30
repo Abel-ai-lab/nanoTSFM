@@ -32,11 +32,11 @@ The project is planned for about two-thirds of the eight weeks; the last two are
 | Week | Dates | Work | Checkpoint |
 | --- | --- | --- | --- |
 | 1 | Sep 29 – Oct 5 | Find a teammate; set up and run `./run.sh toy` | Team and project chosen by October 7 |
-| 2 | Oct 6 – Oct 12 | Reproduce the current record with three seeds | Its GIFT-Eval within $\pm 0.01$ of the record |
+| 2 | Oct 6 – Oct 12 | Reproduce the current record with three repeated runs | Its GIFT-Eval within $\pm 0.01$ of the record |
 | 3 | Oct 13 – Oct 19 | Choose a hypothesis from [directions](directions.md); run cheap pilots, reading GEP-Val and GIFT-Eval together | One-paragraph proposal |
 | 4 | Oct 20 – Oct 26 | Implement the change and compare it with the record | — |
 | 5 | Oct 27 – Nov 2 | Run the ablation; start the report | — |
-| 6 | Nov 3 – Nov 9 | Final runs with three seeds, GIFT-Eval, report, `./run.sh submit` | A first pull request |
+| 6 | Nov 3 – Nov 9 | Three repeated final runs, GIFT-Eval, report, `./run.sh submit` | A first pull request |
 | 7–8 | Nov 10 – Nov 23 | Fix what the checks and the review find; improve and submit again | Pull request by November 23, 11:59 PM |
 
 ## Compute
@@ -79,7 +79,7 @@ Rankings decide awards, not grades.
 | Component | Weight | What earns it |
 | --- | ---: | --- |
 | Research idea and hypothesis | 20% | A clear, testable hypothesis, grounded in the pilot results or the literature |
-| Experimental method | 20% | Three seeds for every configuration compared, and a fair comparison with the record built on |
+| Experimental method | 20% | Three repeated runs for every configuration compared, and a fair comparison with the record built on |
 | Ablation and analysis | 20% | An ablation that isolates the change, and where the change helps or hurts |
 | Result | 20% | 10% for a submission that passes verification, and 10% more if it beats the course bar |
 | Report | 10% | Follows the template; every number comes from a run |
