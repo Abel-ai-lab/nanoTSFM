@@ -29,11 +29,14 @@ LINKS = [
     ("Rules", f"{REPO}/blob/main/docs/rules.md", None),
     ("Submit a result", f"{REPO}/blob/main/docs/submission.md", None),
 ]
-ABOUT = """nanoTSFM is an open benchmark for training small time-series foundation models on a fixed
-budget. A run trains on GIFT-Eval Pretrain and is then scored on GIFT-Eval datasets it has never
-seen; the best verified score holds the record."""
 # The task as a short specification; KaTeX renders the TeX between dollar signs.
 DOCS = f"{REPO}/blob/main/docs"
+ABOUT = f"""nanoTSFM is an open benchmark for training small time-series foundation models on a
+fixed budget. A run trains on GIFT-Eval Pretrain and is then scored on GIFT-Eval datasets it has
+never seen; the best verified score holds the record. Each try takes minutes and ends in one
+verified number, so nanoTSFM is also a small environment for
+<a href="{DOCS}/directions.md#agents-and-recursive-self-improvement">recursive self-improvement</a>,
+where an AI agent runs the loop."""
 SPEC = [
     ("Model", "3.3M parameters in the baseline; free to change"),
     ("Data", f'<a href="{DOCS}/data.md">GIFT-Eval Pretrain</a>'),
