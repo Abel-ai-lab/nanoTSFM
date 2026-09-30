@@ -69,7 +69,7 @@ improved GEP-Test (0.618 to 0.581 at 40,000 steps) and worsened GIFT-Eval (0.666
 - **Spending the budget:** steps, batch size, model size, context and data compete for the same
   hour; the baseline trains at 46 steps per second on an A100 with the GPU 96% busy.
 - **Regularization and schedule:** weight decay, dropout, weight averaging, or stopping on a
-  transfer signal. AdamW at 1e-3 with cosine decay is the baseline; Muon or NorMuon (Toto 2.0) and
+  transfer signal. AdamW at $10^{-3}$ with cosine decay is the baseline; Muon or NorMuon (Toto 2.0) and
   warmup-stable-decay are alternatives.
 - **Throughput:** `torch.compile`, fewer padding tokens (short series are left-padded to 1,536
   steps), packing short series end to end.
