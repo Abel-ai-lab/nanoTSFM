@@ -47,9 +47,9 @@ is the challenge.
 
 - Allowed: any part of [GIFT-Eval Pretrain](https://huggingface.co/datasets/Salesforce/GiftEvalPretrain)
   (revision 6830b62), in any selection, mixture or preprocessing, including the
-  [GEP slices](data.md), and synthetic series your own code generates.
-- Not allowed: GIFT-Eval test data, other real datasets, pretrained weights, and other models'
-  forecasts. Training on GEP-Val or GEP-Test series is allowed but voids those diagnostics.
+  [GEP slices](data.md).
+- Not allowed: GIFT-Eval test data, other datasets, synthetic series, pretrained weights, and other
+  models' forecasts. Training on GEP-Val or GEP-Test series is allowed but voids those diagnostics.
 - Your code must not read GIFT-Eval data while training or forecasting.
 
 ## Fixed
@@ -64,3 +64,16 @@ Everything else is yours to change.
 
 Your fork must be public, and the runs' commit must be pushed. Submissions arrive as pull requests;
 see [submission](submission.md).
+
+## Credit
+
+- **Records:** the [record page](https://abel-ai-lab.github.io/nanoTSFM/) and the README's badge
+  show the latest record and its contributors, and update when the record merges.
+- **Notable submissions:** a submission that misses the record or breaks a rule but tests a useful
+  idea can be listed with its verified score under Notable submissions in the README, so the idea
+  is not lost.
+
+## Rulings
+
+Maintainers decide edge cases and record each ruling here, with its date and pull request, so the
+same question gets the same answer. None yet.
