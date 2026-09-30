@@ -74,6 +74,17 @@ improved GEP-Test (0.618 to 0.581 at 40,000 steps) and worsened GIFT-Eval (0.666
 - **Throughput:** `torch.compile`, fewer padding tokens (short series are left-padded to 1,536
   steps), packing short series end to end.
 
+## Agents and recursive self-improvement
+
+nanoTSFM is also a small environment for recursive self-improvement, where an AI system improves the
+training of another model. One iteration takes minutes and ends in one verified number: the baseline
+trains in 2 minutes and GIFT-Eval scores it in about 5. An agent can run the loop that
+[autoresearch](https://github.com/karpathy/autoresearch) runs on nanochat: change the code, train,
+score, keep or discard. The
+[Automated LLM Speedrunning Benchmark](https://arxiv.org/abs/2506.22419) tests agents on
+modded-nanogpt's records in the same way. A submission made with an agent follows the same rules,
+and its `ai_disclosure` field says how the agent was used.
+
 ## Pilot runs
 
 | Change | Setting | GIFT-Eval | GEP-Test | Compared with (GIFT-Eval, GEP-Test) |
