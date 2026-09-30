@@ -1,6 +1,6 @@
 """Build the record page from records/*/, or print the README's record table.
 
-python scripts/records.py DIR      # DIR/index.html, DIR/records.svg and DIR/scatter.svg
+python scripts/records.py DIR      # the page, its two figures and the badge, in DIR
 python scripts/records.py --table
 """
 
@@ -14,9 +14,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
-# GIFT-Eval leaderboard at gift-eval commit 9a014e9: zero-shot models without test leakage.
-# Parameter counts are the safetensors totals on each model's Hugging Face page.
+# GIFT-Eval leaderboard at gift-eval commit 9a014e9: models without test leakage. Parameter counts
+# are the safetensors totals on each model's Hugging Face page. The leaderboard ranks entries by
+# their average rank over tasks; its first, STRIDE w/ Synapse, is an agentic system with no
+# published size, which the figures draw as a diamond.
 MILESTONES = {
+    "STRIDE w/ Synapse": {"mase": 0.625, "crps": 0.423, "parameters": None, "short": "STRIDE"},
     "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
     "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524, "parameters": 4_144_448},
     "TinyCast": {"mase": 0.774, "crps": 0.545, "parameters": 146_505},
@@ -29,34 +32,57 @@ LINKS = [
     ("Rules", f"{REPO}/blob/main/docs/rules.md", None),
     ("Submit a result", f"{REPO}/blob/main/docs/submission.md", None),
 ]
-ABOUT = """nanoTSFM is an open benchmark for training small time-series foundation models on a fixed
-budget. A run trains a 3.3M-parameter simplified Toto 2.0 for at most one hour on one A100 80GB,
-using data from GIFT-Eval Pretrain, and is then scored zero-shot on GIFT-Eval."""
-SETUP = [
+# The task as a short specification; KaTeX renders the TeX between dollar signs.
+DOCS = f"{REPO}/blob/main/docs"
+ABOUT = f"""nanoTSFM is an open benchmark for training small time-series foundation models on a
+fixed budget. A run trains on GIFT-Eval Pretrain and is then scored on GIFT-Eval datasets it has
+never seen; the best verified score holds the record. Each try takes minutes and ends in one
+verified number, so nanoTSFM is also a small environment for
+<a href="{DOCS}/directions.md#agents-and-recursive-self-improvement">recursive self-improvement</a>,
+where an AI agent runs the loop."""
+SPEC = [
+    ("Model", "3.3M parameters in the baseline; free to change"),
+    ("Data", f'<a href="{DOCS}/data.md">GIFT-Eval Pretrain</a>'),
+    ("Budget", r"$\leq 3600\,\text{s}$ of training on $1 \times$ A100 80GB"),
+    ("Score", f'<a href="{DOCS}/rules.md#score">CRPS</a> on GIFT-Eval, zero-shot; lower is better'),
     (
-        "Model",
-        "3.3M-parameter simplified Toto 2.0; everything but the forecast interface may change",
-    ),
-    ("Data", "GIFT-Eval Pretrain, as the GEP-S, GEP-M and GEP-L slices on Hugging Face"),
-    ("Budget", "At most 3,600 seconds of training per run on one A100 80GB"),
-    (
-        "Score",
-        "GIFT-Eval CRPS relative to Seasonal Naive, 97 tasks, geometric mean; lower is better",
+        "Submission",
+        r"$\geq 3$ seeds at one commit; a record needs $\geq 0.013$ below the last "
+        f'(<a href="{DOCS}/submission.md#the-record-rule">rule</a>)',
     ),
 ]
-RULE = """A record is the mean of three or more runs at one commit, retrained by the maintainers. It
-must improve on the previous record by more than seed noise: 0.013 with three runs each."""
-FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
-the two panels by metric, each small gray dot is one verified run and the orange line is the record,
-the mean of its runs. Records are decided on CRPS."""
+# The whole process, left to right: (title, two detail lines, whether participants may change it).
+PROCESS = [
+    ("Pretrain corpus", "GIFT-Eval Pretrain", "no other real data", False),
+    ("Data pipeline", "selection, mixing", "preprocessing", True),
+    ("Model + training", "any architecture", "1 hour on 1 A100", True),
+    ("Forecast", "fixed interface", "nine quantiles", False),
+    ("Evaluation", "GIFT-Eval, 97 tasks", "zero-shot CRPS", False),
+    ("Submission", "3+ seeds, one PR", "retrained by us", False),
+]
+MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css"
+  integrity="sha384-1vdNCNel6Tx/NQa8IR1mGOGKsbGreCkOPfbtPPnUURJ5Tu2PRVfQ/7KLZC+Pi1p1"
+  crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.js"
+  integrity="sha384-ycJ6GAwiS15LoUPipwJOrWTvkUHl/YqELValBwI5I4awP1EeEQJYarj+w85ntcz7"
+  crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/contrib/auto-render.min.js"
+  integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz"
+  crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.spec'),
+  {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false})"></script>"""
+RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
+FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard; the
+diamond is STRIDE w/ Synapse, ranked first on the leaderboard, an agentic system. In the two
+panels by metric, each small gray dot is one verified run and the orange line is the record, the
+mean of its runs. Records are decided on CRPS."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
 )
 TOKENS = """--paper: #FFFFFF; --ink: #14202B; --text: #3E4A56; --muted: #6B7682; --rule: #E1E4E0;
-  --accent: #D9622B; --milestone: #8C99A6; --run: #A9B1BA;"""
+  --accent: #D9622B; --milestone: #8C99A6; --run: #A9B1BA; --mine: #FBE6DA;"""
 DARK = """--paper: #10181F; --ink: #F4F5F1; --text: #C9D3DC; --muted: #8C99A6; --rule: #2A3845;
-  --accent: #F08A55; --milestone: #6B7682; --run: #56626E; color-scheme: dark;"""
+  --accent: #F08A55; --milestone: #6B7682; --run: #56626E; --mine: #3A2419; color-scheme: dark;"""
 STYLE = f"""
 :root {{ {TOKENS} }}
 @media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ {DARK} }} }}
@@ -70,6 +96,8 @@ a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outl
 .band .inner {{ max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 56px 44px; }}
 .band h1 {{ margin: 0; color: #F4F5F1; font-size: 44px; font-weight: 600; line-height: 1.1; }}
 .band p {{ margin: 12px 0 24px; font-size: 18px; max-width: 60ch; }}
+.band .latest {{ margin: 20px 0 0; font-size: 14px; max-width: none; }}
+.band .latest a, .band .latest b {{ color: #F4F5F1; }}
 .buttons {{ display: flex; flex-wrap: wrap; gap: 10px; }}
 .buttons a {{ display: inline-flex; align-items: center; gap: 8px; color: #F4F5F1;
   border: 1px solid #3A4A5A; border-radius: 6px; padding: 7px 14px; text-decoration: none;
@@ -93,6 +121,7 @@ svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-s
 svg .run {{ fill: var(--run); }}
 svg .model {{ fill: var(--milestone); }}
 svg .key {{ fill: var(--paper); stroke: var(--milestone); }}
+svg .star {{ fill: var(--accent); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
 svg .rec {{ fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }}
 svg .change {{ fill: var(--accent); font: 12.5px "IBM Plex Sans", Arial, sans-serif; }}
@@ -103,8 +132,17 @@ svg [data-tip].on {{ transform: scale(1.6); }}
   background: var(--ink); color: var(--paper); border-radius: 6px; padding: 8px 12px;
   font-size: 13px; line-height: 1.5; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }}
 .tip b {{ display: block; }}
-dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0; }}
+dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0;
+  align-items: baseline; }}
 dt {{ color: var(--muted); }} dd {{ margin: 0; }}
+.spec .katex {{ font-size: 1.05em; }}
+.flow {{ margin: 20px 0 12px; }}
+.flow .box {{ fill: var(--paper); stroke: var(--milestone); }}
+.flow .box.mine {{ fill: var(--mine); stroke: var(--accent); }}
+.flow .name {{ fill: var(--ink); font: 600 13px "IBM Plex Sans", Arial, sans-serif; }}
+.flow .line {{ fill: var(--muted); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
+.flow .arrow {{ stroke: var(--milestone); fill: none; }}
+.flow .head {{ fill: var(--milestone); }}
 .scroll {{ overflow-x: auto; }}
 table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
 th {{ text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; }}
@@ -145,7 +183,7 @@ STANDALONE = """<style>
 .tick { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
 .grid { stroke: #E1E4E0; } .ref { stroke: #8C99A6; stroke-dasharray: 5 5; }
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
-.model { fill: #8C99A6; } .key { fill: #FFFFFF; stroke: #8C99A6; }
+.model { fill: #8C99A6; } .key { fill: #FFFFFF; stroke: #8C99A6; } .star { fill: #D9622B; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
 .change { fill: #D9622B; font: 12.5px Arial, sans-serif; }
@@ -240,6 +278,25 @@ def radius(parameters: int) -> float:
     return max(3.0, 3 * math.log10(parameters) - 12)
 
 
+def latest(entries) -> str:
+    """The latest record in one line, with its contributors."""
+    folder, team, result = entries[-1]
+    return (
+        f"Latest record: <b>{result['gift_eval']['crps']:.3f}</b> relative CRPS, "
+        f"{esc(team['description'])}, by {people(team)} on {esc(folder.split('_', 1)[0])}"
+    )
+
+
+def badge(entries) -> str:
+    """The README's record badge, as a shields.io endpoint."""
+    _, team, result = entries[-1]
+    who = ", ".join(f"@{m['github']}" for m in team["members"])
+    message = f"{result['gift_eval']['crps']:.3f} by {who}"
+    return json.dumps(
+        {"schemaVersion": 1, "label": "world record", "message": message, "color": "D9622B"}
+    )
+
+
 def people(team: dict) -> str:
     return ", ".join(
         f'<a href="https://github.com/{esc(m["github"])}">@{esc(m["github"])}</a>'
@@ -283,9 +340,66 @@ def tips(standalone):
 
     def model(name, scores):
         lines = (f"MASE {scores['mase']:.3f}", f"CRPS {scores['crps']:.3f}")
+        if scores["parameters"] is None:
+            return tip(name, *lines, "Ranked first on the leaderboard; an agentic system")
         return tip(name, *lines, f"{size(scores['parameters'])} parameters")
 
     return run, record, model
+
+
+def process(narrow=False) -> str:
+    """The whole process as boxes and arrows; the parts participants may change are orange."""
+    count = len(PROCESS)
+    if narrow:  # one box per row, top to bottom
+        width, wide, tall, gap = 400, 400, 46, 18
+        spots = [(0, k * (tall + gap)) for k in range(count)]
+    else:  # one row, left to right
+        width, wide, tall, gap = 880, 128, 76, 22
+        spots = [(k * (wide + gap), 0) for k in range(count)]
+    legend = spots[-1][1] + tall + 26
+    parts = []
+    for k, ((x, y), (name, first, second, mine)) in enumerate(zip(spots, PROCESS, strict=True)):
+        parts.append(
+            f'<rect class="box{" mine" * mine}" x="{x + 0.5}" y="{y + 0.5}" width="{wide - 1}" '
+            f'height="{tall - 1}" rx="8"/>'
+        )
+        if narrow:
+            parts.append(
+                f'<text class="name" x="{x + 14}" y="{y + 20}">{name}</text>'
+                f'<text class="line" x="{x + 14}" y="{y + 37}">{first} · {second}</text>'
+            )
+        else:
+            parts.append(
+                f'<text class="name" x="{x + 12}" y="{y + 24}">{name}</text>'
+                f'<text class="line" x="{x + 12}" y="{y + 45}">{first}</text>'
+                f'<text class="line" x="{x + 12}" y="{y + 62}">{second}</text>'
+            )
+        if k:  # an arrow from the previous box
+            if narrow:
+                mid, start, end = x + wide / 2, y - gap + 3, y - 4
+                parts.append(
+                    f'<path class="arrow" d="M{mid},{start} V{end}"/>'
+                    f'<path class="head" d="M{mid - 4},{end - 5} L{mid},{end} '
+                    f'L{mid + 4},{end - 5}Z"/>'
+                )
+            else:
+                mid, start, end = y + tall / 2, x - gap + 3, x - 4
+                parts.append(
+                    f'<path class="arrow" d="M{start},{mid} H{end}"/>'
+                    f'<path class="head" d="M{end - 5},{mid - 4} L{end},{mid} '
+                    f'L{end - 5},{mid + 4}Z"/>'
+                )
+    for k, (label, mine) in enumerate((("Yours to change", True), ("Fixed", False))):
+        x = k * 150
+        parts.append(
+            f'<rect class="box{" mine" * mine}" x="{x + 0.5}" y="{legend - 11.5}" width="16" '
+            f'height="14" rx="3"/><text class="line" x="{x + 24}" y="{legend}">{label}</text>'
+        )
+    height = legend + 8
+    return (
+        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="The process from data to '
+        f'record; orange parts are yours to change">{"".join(parts)}</svg>'
+    )
 
 
 def ticks(lo, hi):
@@ -315,18 +429,21 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         key = f"geometric_relative_{metric}"
         runs = [run["gift_eval"][key] for _, _, r in entries for run in r["runs"]]
         means = [r["gift_eval"][metric] for _, _, r in entries]
-        marks = [(model, scores[metric]) for model, scores in MILESTONES.items()]
+        marks = [
+            (scores.get("short", model), scores[metric]) for model, scores in MILESTONES.items()
+        ]
         lo = min(runs + [value for _, value in marks]) - 0.01
         hi = max(runs) + 0.01
         xs = [left + (right - left) * (i + 0.5) / count for i in range(count)]
         scale = (block - top - bottom) / (hi - lo)
-        ys = {v: down + top + scale * (hi - v) for v in runs + means + [v for _, v in marks]}
+        # The axis is reversed so that progress climbs: lower scores sit higher.
+        ys = {v: down + top + scale * (v - lo) for v in runs + means + [v for _, v in marks]}
         parts.append(
             f'<text class="title" x="{4 if narrow else left}" y="{down + 26}">'
-            f"GIFT-Eval relative {name} (lower is better)</text>"
+            f"{name} by record (up is better)</text>"
         )
         for tick in ticks(lo, hi):
-            y = down + top + scale * (hi - tick)
+            y = down + top + scale * (tick - lo)
             parts.append(
                 f'<line class="grid" x1="{left}" x2="{right}" y1="{y:.1f}" y2="{y:.1f}"/>'
                 f'<text class="tick" x="{left - 8}" y="{y + 4:.1f}" text-anchor="end">'
@@ -350,19 +467,30 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         for i in range(1, count):
             path += f" H{xs[i]:.1f} V{ys[means[i]]:.1f}"
         parts.append(f'<path class="best" d="{path} H{right}"/>')
+        # Labels keep clear of the points and of the step line, inside the plot.
+        taken = [(xs[i] - 6, ys[m] - 6, xs[i] + 6, ys[m] + 6) for i, m in enumerate(means)]
+        corners = [(xs[0], ys[means[0]])]
+        for i in range(1, count):
+            corners += [(xs[i], ys[means[i - 1]]), (xs[i], ys[means[i]])]
+        corners.append((right, ys[means[-1]]))
+        for (ax, ay), (bx, by) in zip(corners, corners[1:], strict=False):
+            steps = max(1, int(math.hypot(bx - ax, by - ay) / 6))
+            for k in range(steps + 1):
+                px, py = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
+                taken.append((px - 3, py - 3, px + 3, py + 3))
+        frame = (left, down + top - 30, right, down + block - bottom)
         for i, (folder, team, result) in enumerate(entries):
             label = team["description"] if i else "baseline"
             y = ys[means[i]]
             parts.append(
                 f'<circle class="rec" cx="{xs[i]:.1f}" cy="{y:.1f}" r="5"'
                 f"{record_tip(i + 1, folder, team, result)}/>"
-                # The narrow layout has no room for the change; the record's number stands for it.
-                + f'<text class="change" transform="translate({xs[i] + 8:.1f},{y - 10:.1f}) '
-                f'rotate(-28)">{esc(label)}</text>'
-                * (not narrow)
-                + f'<text class="tick" x="{xs[i]:.1f}" y="{down + block - bottom + 20}" '
+                f'<text class="tick" x="{xs[i]:.1f}" y="{down + block - bottom + 20}" '
                 f'text-anchor="middle">{i + 1}</text>'
             )
+            if not narrow:  # the narrow layout has no room; the record's number stands for it
+                where = place(xs[i], y, 5, label, taken, frame)
+                parts.append(f'<text class="change" {where}>{esc(label)}</text>')
         parts.append(
             f'<text class="sub" x="{(left + right) / 2:.1f}" y="{down + block - 6}" '
             'text-anchor="middle">Record</text>'
@@ -400,34 +528,32 @@ def place(cx, cy, r, text, taken, frame) -> str:
 
 
 def scatter_chart(entries, standalone=False, narrow=False) -> str:
-    """CRPS against MASE, best at the lower right: records and published models as points.
+    """CRPS against MASE, best at the upper right: records and published models as points.
 
-    MASE falls to the right, so progress runs the same way as in the charts by record. A point's
-    size shows its parameter count. The narrow layout for phones labels records by number.
+    Both axes are reversed, so progress climbs to the upper right as in the charts by record. A
+    point's size shows its parameter count. The narrow layout for phones labels records by number.
     """
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
     if narrow:
-        width, height, left, right, top, bottom = 400, 430, 46, 14, 78, 50
+        width, height, left, right, top, bottom = 400, 414, 46, 14, 62, 50
     _, record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
     points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
-    lows = [min(p[axis] for p in points) - 0.02 for axis in (0, 1)]
+    # Room on the better side, so the star stands apart from even the best model.
+    spans = [max(p[axis] for p in points) - min(p[axis] for p in points) for axis in (0, 1)]
+    lows = [min(p[axis] for p in points) - 0.25 * spans[axis] for axis in (0, 1)]
     highs = [max(p[axis] for p in points) + 0.02 for axis in (0, 1)]
 
     def x(mase):
         return left + (width - left - right) * (highs[0] - mase) / (highs[0] - lows[0])
 
     def y(crps):
-        return top + (height - top - bottom) * (highs[1] - crps) / (highs[1] - lows[1])
+        return top + (height - top - bottom) * (crps - lows[1]) / (highs[1] - lows[1])
 
-    parts = [
-        f'<text class="title" x="{left}" y="26">GIFT-Eval relative CRPS against MASE '
-        "(lower right is better)</text>"
-    ]
+    parts = [f'<text class="title" x="{left}" y="26">CRPS vs MASE</text>']
     if narrow:
         parts = [
-            '<text class="title" x="4" y="24">GIFT-Eval relative CRPS against MASE</text>'
-            '<text class="sub" x="4" y="44">Lower right is better</text>'
+            '<text class="title" x="4" y="24">CRPS vs MASE</text>'
             f'<text class="sub" x="4" y="{top - 10}">Relative CRPS</text>'
         ]
     for tick in ticks(lows[1], highs[1]):
@@ -442,8 +568,8 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             f'y2="{height - bottom}"/><text class="tick" x="{x(tick):.1f}" '
             f'y="{height - bottom + 20}" text-anchor="middle">{tick:.2f}</text>'
         )
-    # The size legend sits in the corner no model reaches: high MASE with low CRPS.
-    start, line = left + (8 if narrow else 20), height - bottom - 34
+    # The size legend sits in the corner no model reaches: high MASE with low CRPS, the upper left.
+    start, line = left + (8 if narrow else 20), top + 30
     taken = [(start, line - 40, start + (180 if narrow else 230), line + 18)]
     parts.append(
         f'<text class="rlabel" x="{start}" y="{line - 26}">Point size: parameters'
@@ -458,7 +584,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         )
         start += 2 * r + 5 + 7 * len(label) + 18
     models = [
-        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"]), name, scores)
+        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"] or 1e7), name, scores)
         for name, scores in MILESTONES.items()
     ]
     records = [
@@ -473,6 +599,15 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             px, py = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
             taken.append((px - 3, py - 3, px + 3, py + 3))
     frame = (left, top - 20, width, height - bottom)
+    # A star marks the best corner, the lowest MASE and the lowest CRPS, drawn over the points.
+    sx, sy = width - right, top
+    star = " ".join(
+        f"{sx + (10 if k % 2 == 0 else 4.2) * math.cos(math.radians(-90 + 36 * k)):.1f},"
+        f"{sy + (10 if k % 2 == 0 else 4.2) * math.sin(math.radians(-90 + 36 * k)):.1f}"
+        for k in range(10)
+    )
+    corner = f'<polygon class="star" points="{star}"><title>Best corner</title></polygon>'
+    taken.append((sx - 12, sy - 12, sx + 12, sy + 12))
     path = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy, _ in records)
     parts.append(f'<path class="best" d="M{path}"/>')
     labels = []
@@ -491,11 +626,19 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             f'<text class="change" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
     for cx, cy, r, name, scores in models:
-        label = name if narrow else f"{name} · {size(scores['parameters'])}"
-        parts.append(
-            f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
-            f"{model_tip(name, scores)}/>"
-        )
+        short = scores.get("short", name)
+        if scores["parameters"] is None:  # an agentic system: a diamond, with no size
+            label = short if narrow else f"{name} · agentic"
+            parts.append(
+                f'<path class="model" d="M{cx:.1f},{cy - r:.1f} L{cx + r:.1f},{cy:.1f} '
+                f'L{cx:.1f},{cy + r:.1f} L{cx - r:.1f},{cy:.1f}Z"{model_tip(name, scores)}/>'
+            )
+        else:
+            label = short if narrow else f"{name} · {size(scores['parameters'])}"
+            parts.append(
+                f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
+                f"{model_tip(name, scores)}/>"
+            )
         labels.append(
             f'<text class="rlabel" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
@@ -506,7 +649,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         + f'<text class="sub" transform="translate(16,{middle:.1f}) rotate(-90)" '
         'text-anchor="middle">Relative CRPS</text>' * (not narrow)
     )
-    return svg(width, height, "CRPS against MASE", parts + labels, standalone)
+    return svg(width, height, "CRPS against MASE", parts + labels + [corner], standalone)
 
 
 def loss_chart(result) -> str:
@@ -636,23 +779,24 @@ def page(entries) -> str:
         + f"{esc(text)}</a>"
         for text, url, logo in LINKS
     )
-    setup = "".join(f"<dt>{name}</dt><dd>{esc(value)}</dd>" for name, value in SETUP)
+    spec = "".join(f"<dt>{name}</dt><dd>{value}</dd>" for name, value in SPEC)
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>nanoTSFM</title>
-<meta name="description" content="nanoTSFM: training a time-series foundation model on one A100,
-targeting GIFT-Eval.">
+<meta name="description" content="nanoTSFM: hill-climbing GIFT-Eval with one A100 and one hour.">
 <link rel="stylesheet" href="{FONTS}">
+{MATH}
 <style>{STYLE}</style>
 </head>
 <body>
 <header class="band"><div class="inner">
 <h1><i>nano</i>TSFM</h1>
-<p>Training a time-series foundation model on one A100, targeting GIFT-Eval.</p>
+<p>Hill-climbing GIFT-Eval with one A100 and one hour.</p>
 <nav class="buttons">{buttons}</nav>
+<p class="latest">{latest(entries)}</p>
 </div></header>
 <main>
 <figure class="figure wide">{scatter_chart(entries)}</figure>
@@ -660,7 +804,10 @@ targeting GIFT-Eval.">
 <figure class="figure narrow">{scatter_chart(entries, narrow=True)}</figure>
 <figure class="figure narrow">{progress_chart(entries, narrow=True)}
 <figcaption>{FOOTNOTE}</figcaption></figure>
-<h2>The task</h2><p>{ABOUT}</p><dl>{setup}</dl>
+<h2>The task</h2><p>{ABOUT}</p>
+<figure class="flow wide">{process()}</figure>
+<figure class="flow narrow">{process(narrow=True)}</figure>
+<dl class="spec">{spec}</dl>
 <h2>Records</h2><p>{RULE}</p>{records_table(entries)}
 <h2>Record details</h2>{details(entries)}
 </main>
@@ -681,6 +828,7 @@ def main():
     (out / "index.html").write_text(page(entries))
     (out / "records.svg").write_text(progress_chart(entries, standalone=True))
     (out / "scatter.svg").write_text(scatter_chart(entries, standalone=True))
+    (out / "badge.json").write_text(badge(entries))
     print(out / "index.html")
 
 
