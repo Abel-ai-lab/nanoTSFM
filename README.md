@@ -5,7 +5,7 @@
 [![Python 3.13][python-badge]][python]
 [![License: MIT][license-badge]](LICENSE)
 
-**Train a time-series foundation model on one GPU in two minutes, then make it forecast better.**
+**Hill-climbing GIFT-Eval with one A100 and one hour.**
 
 nanoTSFM is an open challenge built on a 3.3M-parameter simplified [Toto 2.0][toto2]. It trains on
 a 250M-point slice of [GIFT-Eval Pretrain][gep] and is scored zero-shot on [GIFT-Eval][gift], so
@@ -33,7 +33,7 @@ Set the world record on GIFT-Eval with at most one hour of training on one A100 
 
 - **Score:** GIFT-Eval relative CRPS over 97 tasks from 23 datasets the model never trains on,
   relative to Seasonal Naive and averaged geometrically. Lower is better; 1 matches Seasonal Naive.
-- **Data:** any part of GIFT-Eval Pretrain, plus synthetic data your own code generates.
+- **Data:** any part of GIFT-Eval Pretrain, and nothing else.
 - **Fixed:** the evaluation code and the model's forecast interface.
 
 GEP-Val and GEP-Test, held-out series from the training corpus, are 20-second diagnostics. When they
@@ -49,9 +49,9 @@ The [rules](docs/rules.md) have the details.
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
-Records are orange, published models are gray, and a point's size shows its parameter count; lower
-right is better. A record is the $\text{mean} \pm \text{sd}$ of three or more verified runs and is
-decided on CRPS. See the [record page][site] for every run and [submission](docs/submission.md) for
+Records are orange, published models are gray, a point's size shows its parameter count, and the
+star marks the best corner. A record is the $\text{mean} \pm \text{sd}$ of three or more verified
+runs and is decided on CRPS. See the [record page][site] for every run and [submission](docs/submission.md) for
 how to set a record.
 
 ## Data
@@ -140,7 +140,7 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 [license-badge]: https://img.shields.io/badge/license-MIT-2E7A58
 [gift]: https://huggingface.co/spaces/Salesforce/GIFT-Eval
 [data-badge]: https://img.shields.io/badge/data-nanoTSFM--pretrain-FFD21E?logo=huggingface
-[record-badge]: https://img.shields.io/badge/world%20record-record%20page-D9622B
+[record-badge]: https://img.shields.io/endpoint?url=https://abel-ai-lab.github.io/nanoTSFM/badge.json
 [site]: https://abel-ai-lab.github.io/nanoTSFM/
 [chart]: https://abel-ai-lab.github.io/nanoTSFM/scatter.svg
 [data]: https://huggingface.co/datasets/abel-lab/nanoTSFM-pretrain

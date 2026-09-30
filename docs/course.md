@@ -42,7 +42,8 @@ The project is planned for about two-thirds of the eight weeks; the last two are
 ## Compute
 
 Each team receives a \$50 Runpod credit code; a typical project uses \$20–40 of A100 time. Students
-with an ASU Research Computing account can also use the Sol cluster at no cost.
+with an ASU Research Computing account can also use the Sol cluster at no cost. Teams that need
+more compute can ask for it; each request is reviewed.
 
 ## Run on Runpod
 
