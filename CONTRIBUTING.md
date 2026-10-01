@@ -28,13 +28,15 @@ Open an issue first, then a focused pull request that fills in the template's Ch
 maintainer reviews it.
 
 - **Training stays fixed.** A change to nanoTSFM leaves `src/`, `configs/`, `pyproject.toml` and
-  `uv.lock` alone, so `main` keeps training the current record and open submissions stay valid. A
-  check fails any pull request that changes these files without a record folder.
+  `uv.lock` alone, apart from the score's files, so `main` keeps training the current record and
+  open submissions stay valid. A check fails any pull request that changes these files without a
+  record folder.
 - **When training must change** (a bug fix, a dependency update), a maintainer re-runs the current
   record's runs at the new code and adds the `changes training` label. The change ships in a new
   minor version. Open submissions then merge `main` and train again.
-- **The score's files**, `src/nanotsfm/evaluation.py` and `configs/gift-full.json`, change only in
-  a new major version. Maintainers own `scripts/submission.py` and `.github/`.
+- **The score's files**, `src/nanotsfm/evaluation.py`, `scripts/score.py` and
+  `configs/gift-full.json`, change a score only in a new major version. Maintainers own `scripts/`
+  and `.github/`.
 
 ## Versions
 

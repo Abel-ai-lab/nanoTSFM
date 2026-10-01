@@ -78,7 +78,7 @@ The baseline on one A100 80GB with 8 CPU cores:
 | `./run.sh data` | 1 min, 730 MB |
 | `./run.sh train baseline` | 2.5 min: 110 s of training (5,000 steps, 3.4 GB of GPU memory), then GEP-Val |
 | `./run.sh test baseline` | 30 s |
-| `./run.sh eval baseline` | 5 min, plus a one-time 1 GB download |
+| `./run.sh eval baseline` | 5 min, plus a one-time 1 GB download; 1.4 GB of forecasts while it runs |
 
 ## Settings
 
@@ -97,7 +97,8 @@ Nothing needs configuring. To change a default, copy [`.env.example`](.env.examp
 | `src/nanotsfm/model.py` | Network, configuration, checkpoints, forecasting |
 | `src/nanotsfm/train.py` | Loss, masking, optimization, training clock |
 | `src/nanotsfm/data.py` | Loading, window sampling, variate packing |
-| `src/nanotsfm/evaluation.py` | GIFT-Eval and GEP scoring (fixed) |
+| `src/nanotsfm/evaluation.py` | GEP scoring, and GIFT-Eval forecasts for the scorer (fixed) |
+| `scripts/score.py` | GIFT-Eval scoring, in a process that loads none of `src/` (fixed) |
 | `run.sh` | Every command |
 | `configs/` | Training configurations and the GIFT-Eval task list |
 | `scripts/` | The submission tools and the record page |

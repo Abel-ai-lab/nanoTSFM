@@ -62,8 +62,11 @@ is the challenge.
 
 ## Fixed
 
-- `src/nanotsfm/evaluation.py`, `configs/gift-full.json`, `scripts/submission.py` and `.github/`:
-  maintainers verify every submission with the official versions of these files.
+- `src/nanotsfm/evaluation.py`, `configs/gift-full.json`, `scripts/` and `.github/`: maintainers
+  verify every submission with the official versions of these files, and a check fails any
+  submission that changes them.
+- Your code forecasts; official code scores. `evaluation.py` writes the GIFT-Eval forecasts, and
+  `scripts/score.py` scores them in its own process, which loads none of `src/`.
 - The forecast interface in the [README](../README.md), which the evaluator calls.
 
 Everything else is yours to change.

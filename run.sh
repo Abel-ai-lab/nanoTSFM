@@ -65,7 +65,11 @@ eval)
   workers=$(( cores < 16 ? cores : 16 ))
   py -m nanotsfm.evaluation gift --checkpoint "$RUNS/$name/checkpoint.pt" \
     --upstream external/gift-eval --tasks configs/gift-full.json \
-    --output "$RUNS/$name/gift.json" --device auto --workers "$workers"
+    --output "$RUNS/$name/gift-forecasts" --device auto --workers "$workers"
+  # Scoring runs in its own process, which loads none of nanotsfm's code.
+  py -m scripts.score --forecasts "$RUNS/$name/gift-forecasts" --upstream external/gift-eval \
+    --tasks configs/gift-full.json --output "$RUNS/$name/gift.json" --workers "$workers"
+  rm -r "$RUNS/$name/gift-forecasts"  # 1.4 GB, no longer needed
   ;;
 submit)
   name=${2:?Usage: ./run.sh submit <name> <run> <run> <run>...}
