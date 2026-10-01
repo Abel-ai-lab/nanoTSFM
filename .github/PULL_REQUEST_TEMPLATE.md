@@ -19,7 +19,7 @@ Title a submission "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
 
 **Ablation:** how much of the gain each change brings.
 
-**Reproduce:** `./run.sh train <run> <config> <seed>` for each seed, and any data command.
+**Reproduce:** `./run.sh train <run> <config> <seed>` for each run, and any data command.
 
 - [ ] Every run of the final configuration is in `result.json`, trained at one pushed commit
       after merging `main`.

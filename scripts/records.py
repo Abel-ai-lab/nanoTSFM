@@ -43,23 +43,29 @@ where an AI agent runs the loop."""
 SPEC = [
     ("Model", "3.3M parameters in the baseline; free to change"),
     ("Data", f'<a href="{DOCS}/data.md">GIFT-Eval Pretrain</a>'),
-    ("Budget", r"$\leq 3600\,\text{s}$ of training on $1 \times$ A100 80GB"),
+    (
+        "Budget",
+        rf'$\leq 3600\,\text{{s}}$ of <a href="{DOCS}/rules.md#budget">training</a> '
+        r"on $1 \times$ A100 80GB",
+    ),
     ("Score", f'<a href="{DOCS}/rules.md#score">CRPS</a> on GIFT-Eval, zero-shot; lower is better'),
     (
         "Submission",
-        r"$\geq 3$ seeds at one commit; a record needs $\geq 0.013$ below the last "
+        r"$\geq 3$ repeated runs at one commit; a record needs $\geq 0.013$ below the last "
         f'(<a href="{DOCS}/submission.md#the-record-rule">rule</a>)',
     ),
 ]
 # The whole process, left to right: (title, two detail lines, whether participants may change it).
 PROCESS = [
-    ("Pretrain corpus", "GIFT-Eval Pretrain", "no other real data", False),
+    ("Pretrain corpus", "GIFT-Eval Pretrain", "nothing else", False),
     ("Data pipeline", "selection, mixing", "preprocessing", True),
-    ("Model + training", "any architecture", "1 hour on 1 A100", True),
+    ("Model + training", "any architecture", "any optimizer", True),
     ("Forecast", "fixed interface", "nine quantiles", False),
     ("Evaluation", "GIFT-Eval, 97 tasks", "zero-shot CRPS", False),
-    ("Submission", "3+ seeds, one PR", "retrained by us", False),
+    ("Submission", "3+ repeated runs", "retrained by us", False),
 ]
+# The training clock covers one box of the process: (box, label, detail).
+CLOCK = (2, "1 hour on 1 A100", "training steps only")
 MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css"
   integrity="sha384-1vdNCNel6Tx/NQa8IR1mGOGKsbGreCkOPfbtPPnUURJ5Tu2PRVfQ/7KLZC+Pi1p1"
   crossorigin="anonymous">
@@ -132,6 +138,8 @@ svg [data-tip].on {{ transform: scale(1.6); }}
   background: var(--ink); color: var(--paper); border-radius: 6px; padding: 8px 12px;
   font-size: 13px; line-height: 1.5; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }}
 .tip b {{ display: block; }}
+.tip.linked {{ pointer-events: auto; }}
+.tip a {{ color: var(--paper); text-underline-offset: 3px; }}
 dl {{ display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 16px 0 0;
   align-items: baseline; }}
 dt {{ color: var(--muted); }} dd {{ margin: 0; }}
@@ -143,6 +151,7 @@ dt {{ color: var(--muted); }} dd {{ margin: 0; }}
 .flow .line {{ fill: var(--muted); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
 .flow .arrow {{ stroke: var(--milestone); fill: none; }}
 .flow .head {{ fill: var(--milestone); }}
+.flow .brace {{ fill: none; stroke: var(--ink); stroke-width: 1.5; }}
 .scroll {{ overflow-x: auto; }}
 table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
 th {{ text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; }}
@@ -205,6 +214,13 @@ function show(point) {
   const title = document.createElement("b");
   title.textContent = head;
   tip.replaceChildren(title, rest.join("\\n"));
+  // A record's tooltip links to its report, so the tooltip itself takes the pointer.
+  tip.classList.toggle("linked", Boolean(point.dataset.link));
+  if (point.dataset.link) {
+    const report = Object.assign(document.createElement("a"), { href: point.dataset.link });
+    report.textContent = "Read the report";
+    tip.append("\\n", report);
+  }
   const box = point.getBoundingClientRect(), wide = tip.offsetWidth, tall = tip.offsetHeight;
   let left = box.right + 10, top = box.top + box.height / 2 - tall / 2;
   if (left + wide > innerWidth - 8) left = box.left - 10 - wide;
@@ -215,6 +231,13 @@ function show(point) {
   tip.style.left = left + "px";
   tip.style.top = Math.max(8, Math.min(innerHeight - tall - 8, top)) + "px";
 }
+let closing = null;
+function leave() {
+  // Give the pointer time to reach a linked tooltip before it closes.
+  clearTimeout(closing);
+  if (shown?.dataset.link) closing = setTimeout(() => show(null), 400);
+  else show(null);
+}
 function nearest(event) {
   let best = null, reach = event.pointerType === "touch" ? 24 : 10;
   for (const point of points) {
@@ -224,14 +247,19 @@ function nearest(event) {
     const away = Math.hypot(x, box.top + box.height / 2 - event.clientY) - box.width / 2;
     if (away < reach) [best, reach] = [point, away];
   }
-  show(best);
+  if (best) {
+    clearTimeout(closing);
+    show(best);
+  } else if (shown) leave();
 }
 for (const svg of document.querySelectorAll(".figure svg")) {
   svg.addEventListener("pointermove", nearest);
   svg.addEventListener("pointerdown", nearest);
-  svg.addEventListener("pointerleave", (event) => event.pointerType === "touch" || show(null));
+  svg.addEventListener("pointerleave", (event) => event.pointerType === "touch" || leave());
 }
-addEventListener("pointerdown", (event) => event.target.closest(".figure svg") || show(null));
+tip.addEventListener("pointerenter", () => clearTimeout(closing));
+tip.addEventListener("pointerleave", leave);
+addEventListener("pointerdown", (event) => event.target.closest(".figure svg, .tip") || show(null));
 addEventListener("scroll", () => show(null), true);
 """
 
@@ -313,23 +341,15 @@ def svg(width, height, label, parts, standalone) -> str:
 
 
 def tips(standalone):
-    """Text the page shows when a point is hovered; the README's image has no tooltips."""
+    """Text the page shows when a record or model is hovered; the README's image has none."""
 
     def tip(*lines):
         return "" if standalone else f' data-tip="{esc(chr(10).join(lines))}"'
 
-    def run(number, run):
-        score = run["gift_eval"]
-        return tip(
-            f"Record {number}, seed {run['seed']}",
-            f"MASE {score['geometric_relative_mase']:.4f}",
-            f"CRPS {score['geometric_relative_crps']:.4f}",
-            f"{run['training_seconds']:.0f} s on {run['device']}",
-        )
-
     def record(number, folder, team, result):
         score = result["gift_eval"]
-        return tip(
+        report = "" if standalone else f' data-link="{REPO}/tree/main/records/{esc(folder)}"'
+        return report + tip(
             f"Record {number} · {folder.split('_', 1)[0]}",
             team["description"],
             f"MASE {score['mase']:.4f} ± {score['mase_sd']:.4f}",
@@ -344,20 +364,45 @@ def tips(standalone):
             return tip(name, *lines, "Ranked first on the leaderboard; an agentic system")
         return tip(name, *lines, f"{size(scores['parameters'])} parameters")
 
-    return run, record, model
+    return record, model
 
 
 def process(narrow=False) -> str:
-    """The whole process as boxes and arrows; the parts participants may change are orange."""
-    count = len(PROCESS)
+    """The whole process as boxes and arrows; the parts participants may change are orange.
+
+    A brace marks the box the training clock covers: beside it on phones, under it otherwise.
+    """
+    count, (clock, label, detail) = len(PROCESS), CLOCK
     if narrow:  # one box per row, top to bottom
-        width, wide, tall, gap = 400, 400, 46, 18
+        width, wide, tall, gap = 400, 262, 46, 18
         spots = [(0, k * (tall + gap)) for k in range(count)]
+        legend = spots[-1][1] + tall + 26
     else:  # one row, left to right
         width, wide, tall, gap = 880, 128, 76, 22
         spots = [(k * (wide + gap), 0) for k in range(count)]
-    legend = spots[-1][1] + tall + 26
-    parts = []
+        legend = tall + 82
+    x, y = spots[clock]
+    if narrow:  # a brace opening to the right, then the label beside it
+        edge, mid, end = x + wide + 8, y + tall / 2, y + tall
+        brace = (
+            f"M{edge},{y} Q{edge + 5},{y} {edge + 5},{y + 5} V{mid - 5} "
+            f"Q{edge + 5},{mid} {edge + 10},{mid} Q{edge + 5},{mid} {edge + 5},{mid + 5} "
+            f"V{end - 5} Q{edge + 5},{end} {edge},{end}"
+        )
+        text = f'x="{edge + 18}" y="{mid - 3}"', f'x="{edge + 18}" y="{mid + 14}"'
+    else:  # a brace opening downward, then the label under it
+        edge, mid, end = y + tall + 8, x + wide / 2, x + wide
+        brace = (
+            f"M{x},{edge} Q{x},{edge + 5} {x + 5},{edge + 5} H{mid - 5} "
+            f"Q{mid},{edge + 5} {mid},{edge + 10} Q{mid},{edge + 5} {mid + 5},{edge + 5} "
+            f"H{end - 5} Q{end},{edge + 5} {end},{edge}"
+        )
+        anchor = f'x="{mid}" text-anchor="middle"'
+        text = f'{anchor} y="{edge + 28}"', f'{anchor} y="{edge + 45}"'
+    parts = [
+        f'<path class="brace" d="{brace}"/><text class="name" {text[0]}>{label}</text>'
+        f'<text class="line" {text[1]}>{detail}</text>'
+    ]
     for k, ((x, y), (name, first, second, mine)) in enumerate(zip(spots, PROCESS, strict=True)):
         parts.append(
             f'<rect class="box{" mine" * mine}" x="{x + 0.5}" y="{y + 0.5}" width="{wide - 1}" '
@@ -398,7 +443,8 @@ def process(narrow=False) -> str:
     height = legend + 8
     return (
         f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="The process from data to '
-        f'record; orange parts are yours to change">{"".join(parts)}</svg>'
+        f"record; orange parts are yours to change, and the one-hour clock covers training steps "
+        f'only">{"".join(parts)}</svg>'
     )
 
 
@@ -420,7 +466,7 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
     if narrow:
         span, block, top, bottom, lead, trail = 400, 350, 50, 44, 46, 92
     count = len(entries)
-    run_tip, record_tip, _ = tips(standalone)
+    record_tip, _ = tips(standalone)
     parts = []
     for panel, metric in enumerate(("mase", "crps")):
         across, down = (0, panel * block) if narrow else (panel * span, 0)
@@ -461,7 +507,7 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
                 dx = (j - (len(result["runs"]) - 1) / 2) * 7
                 parts.append(
                     f'<circle class="run" cx="{xs[i] + dx:.1f}" '
-                    f'cy="{ys[run["gift_eval"][key]]:.1f}" r="3.5"{run_tip(i + 1, run)}/>'
+                    f'cy="{ys[run["gift_eval"][key]]:.1f}" r="3.5"/>'
                 )
         path = f"M{xs[0]:.1f},{ys[means[0]]:.1f}"
         for i in range(1, count):
@@ -536,7 +582,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
     if narrow:
         width, height, left, right, top, bottom = 400, 414, 46, 14, 62, 50
-    _, record_tip, model_tip = tips(standalone)
+    record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
     points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
     # Room on the better side, so the star stands apart from even the best model.
@@ -786,6 +832,8 @@ def page(entries) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>nanoTSFM</title>
+<link rel="icon" href="https://abel.ai/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="https://abel.ai/apple-touch-icon.png">
 <meta name="description" content="nanoTSFM: hill-climbing GIFT-Eval with one A100 and one hour.">
 <link rel="stylesheet" href="{FONTS}">
 {MATH}

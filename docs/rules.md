@@ -17,10 +17,11 @@ baseline scored 0.670 after 2 minutes, about 114th of 131 models on the leaderbo
   datasets the model never trains on, averaged geometrically over tasks. Lower is better; 1 matches
   Seasonal Naive. Like the leaderboard, we compute CRPS as the weighted quantile loss over the nine
   quantile levels. Relative MASE is reported beside it.
-- **Seeds:** runs vary by about $\pm 0.007$. Report the mean and spread over three seeds for every
-  configuration you compare, and treat smaller differences as noise.
-- **Evidence:** a submission reports every run of its final configuration, at least three seeds at
-  one commit. It sets a record when its mean beats the record's by the
+- **Repeated runs:** runs with different seeds vary by about $\pm 0.007$. Report the mean and
+  spread over three repeated runs for every configuration you compare, and treat smaller differences
+  as noise.
+- **Evidence:** a submission reports every run of its final configuration, at least three repeated
+  runs at one commit. It sets a record when its mean beats the record's by the
   [record rule](submission.md#the-record-rule): at least 0.013 with three runs each.
 - `./run.sh eval <run>` computes the score in about 5 minutes on 8 CPU cores. The benchmark is
   public; your report explains how you chose your final model.
