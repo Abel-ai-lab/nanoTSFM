@@ -12,6 +12,7 @@ import json
 import math
 import os
 import random
+import shutil
 import statistics
 import subprocess
 import sys
@@ -28,7 +29,7 @@ Z = 2.33  # one-sided p < 0.01
 ROOT = Path(__file__).resolve().parents[1]
 RECORDS = "records"
 FROZEN = "src/nanotsfm/evaluation.py"
-FIXED = (FROZEN, "configs/gift-full.json", "scripts/submission.py", ".github/")
+FIXED = (FROZEN, "configs/gift-full.json", "scripts/", ".github/")
 # What decides training; the fixed evaluation files do not.
 TRAINING = (
     "src",
@@ -288,7 +289,7 @@ def check(folder: Path, run_dirs=()) -> dict:
 
 
 def gift_eval_checkout() -> Path:
-    from nanotsfm.evaluation import UPSTREAM_REVISION
+    from scripts.score import UPSTREAM_REVISION
 
     upstream = ROOT / "external/gift-eval"
     if not upstream.exists():
@@ -337,13 +338,26 @@ def verify(folder: Path, output: Path, device="auto", official=UPSTREAM, only=()
         started = time.monotonic()
         python("nanotsfm.train", "--config", target / "config.yaml", "--output", target / "run")
         wall = time.monotonic() - started
+        suite = ("--upstream", gift_eval_checkout(), "--tasks", ROOT / "configs/gift-full.json")
+        workers = ("--workers", min(16, cores or 1))
+        checkpoint, forecasts = target / "run" / "checkpoint.pt", target / "gift-forecasts"
         python(
             "nanotsfm.evaluation",
             "gift",
-            *("--checkpoint", target / "run" / "checkpoint.pt", "--output", target / "gift.json"),
-            *("--upstream", gift_eval_checkout(), "--tasks", ROOT / "configs/gift-full.json"),
-            *("--device", device, "--workers", min(16, cores or 1)),
+            *("--checkpoint", checkpoint, "--output", forecasts, "--device", device),
+            *suite,
+            *workers,
         )
+        python(
+            "scripts.score",
+            "--forecasts",
+            forecasts,
+            "--output",
+            target / "gift.json",
+            *suite,
+            *workers,
+        )
+        shutil.rmtree(forecasts)
         run = json.loads((target / "run" / "run.json").read_text())
         if run["elapsed_seconds"] > TIME_CAP_SECONDS + TIME_MARGIN_SECONDS:
             raise ValueError(f"{name} trained for {run['elapsed_seconds']:.0f} s, over the cap")

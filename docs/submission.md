@@ -78,13 +78,14 @@ official fixed files, so your code trains and the official code scores:
 
 ```shell
 gh repo clone Abel-ai-lab/nanoTSFM review && cd review && gh pr checkout <number>
-git checkout origin/main -- src/nanotsfm/evaluation.py configs/gift-full.json scripts/submission.py
+git checkout origin/main -- src/nanotsfm/evaluation.py configs/gift-full.json scripts
 uv run --extra gift python -m scripts.submission verify records/<folder> --output verify
 ```
 
 `verify` draws three new random seeds, retrains the configuration once with each, requires every
 retrain to finish within the cap, and compares the mean of the three with the record. Each retrain
-runs in its own process, as does each scoring. The seeds are kept in the output folder, and runs
+runs in its own process; your code writes the forecasts, and `scripts/score.py` scores them in a
+process that loads none of it. The seeds are kept in the output folder, and runs
 already verified there are skipped, so `--runs run-1` can split the work across jobs; three
 full-hour runs take about 3.5 A100-hours. `verify` also says whether your reported runs are
 within run-to-run noise of the retrains.
