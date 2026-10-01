@@ -2,7 +2,7 @@
 
 [![Data on Hugging Face][data-badge]][data]
 [![World record][record-badge]][site]
-[![Python 3.13][python-badge]][python]
+[![Python 3.12–3.14][python-badge]][python]
 [![License: MIT][license-badge]](LICENSE)
 
 **Hill-climbing GIFT-Eval with one A100 and one hour.**
@@ -45,7 +45,7 @@ The [rules](docs/rules.md) have the details.
 | # | GIFT-Eval CRPS | Description | Date | Record | Contributors |
 | ---: | --- | --- | --- | --- | --- |
 | 1 | $0.6699 \pm 0.0073$ | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
-| 2 | $0.6334 \pm 0.0033$ | Weight every series equally | 2026-09-29 | [2026-09-29_Shu-Wan](records/2026-09-29_Shu-Wan/) | [@Shu-Wan](https://github.com/Shu-Wan) |
+| 2 | $0.6316 \pm 0.0045$ | Weight every series equally | 2026-09-29 | [2026-09-29_Shu-Wan](records/2026-09-29_Shu-Wan/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
@@ -136,7 +136,7 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 }
 ```
 
-[python-badge]: https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white
+[python-badge]: https://img.shields.io/badge/python-3.12%E2%80%933.14-3776AB?logo=python&logoColor=white
 [python]: https://www.python.org/downloads/
 [license-badge]: https://img.shields.io/badge/license-MIT-2E7A58
 [gift]: https://huggingface.co/spaces/Salesforce/GIFT-Eval

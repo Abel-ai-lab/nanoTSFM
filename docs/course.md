@@ -59,7 +59,7 @@ syllabus asks for through the course's own channel.
    retrain fails, the team is contacted once to fix packaging problems.
 2. Points:
    - **1 point** if any of the team's submissions has a lower verified mean GIFT-Eval CRPS than the
-     course bar: record 2, `Shu-Wan`, at 0.633.
+     course bar: record 2, `Shu-Wan`, at 0.632.
    - **1 point** for each record the team sets during the course, under the
      [record rule](submission.md#the-record-rule).
 3. Teams are ranked by points, then by the verified mean CRPS of their best submission, then by its
