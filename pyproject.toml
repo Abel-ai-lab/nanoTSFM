@@ -7,7 +7,7 @@ name = "nanotsfm"
 version = "1.1.0"
 description = "An educational time-series foundation-model challenge"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.12,<3.15"
 license = "MIT"
 authors = [{name = "Hank Zhu"}]
 dependencies = [
@@ -39,7 +39,7 @@ packages = ["src/nanotsfm"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
@@ -56,6 +56,8 @@ explicit = true
 
 [tool.uv]
 conflicts = [[{extra = "cpu"}, {extra = "cuda"}]]
+# datasets pickles with dill, which supports Python 3.14 from 0.4.1; older Pythons keep 0.3.8.
+constraint-dependencies = ["dill>=0.4.1; python_version >= '3.14'"]
 
 [tool.uv.sources]
 torch = [
