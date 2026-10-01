@@ -265,12 +265,19 @@ addEventListener("scroll", () => show(null), true);
 
 
 def load() -> list[tuple[str, dict, dict]]:
-    """(folder, front matter, result) for each record, oldest first."""
+    """(folder, front matter, result) for each record, oldest first.
+
+    When the maintainers' retrains are in the folder, they replace the reported score.
+    """
     out = []
     for folder in sorted((ROOT / "records").iterdir()):
         if folder.is_dir() and folder.name != "template":
             team = yaml.safe_load((folder / "README.md").read_text().split("---\n", 2)[1])
-            out.append((folder.name, team, json.loads((folder / "result.json").read_text())))
+            result = json.loads((folder / "result.json").read_text())
+            if (folder / "verified.json").exists():
+                verified = json.loads((folder / "verified.json").read_text())
+                result["gift_eval"], result["retrains"] = verified["gift_eval"], verified["runs"]
+            out.append((folder.name, team, result))
     return sorted(out, key=lambda entry: -entry[2]["gift_eval"]["crps"])  # each record improves
 
 
@@ -473,7 +480,7 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         left, right = across + lead, across + span - trail
         name = metric.upper()
         key = f"geometric_relative_{metric}"
-        runs = [run["gift_eval"][key] for _, _, r in entries for run in r["runs"]]
+        runs = [run["gift_eval"][key] for _, _, r in entries for run in dots(r)]
         means = [r["gift_eval"][metric] for _, _, r in entries]
         marks = [
             (scores.get("short", model), scores[metric]) for model, scores in MILESTONES.items()
@@ -503,8 +510,8 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
                 f'y="{ys[value] + 4:.1f}">{label}</text>'
             )
         for i, (_, _, result) in enumerate(entries):
-            for j, run in enumerate(result["runs"]):
-                dx = (j - (len(result["runs"]) - 1) / 2) * 7
+            for j, run in enumerate(dots(result)):
+                dx = (j - (len(dots(result)) - 1) / 2) * 7
                 parts.append(
                     f'<circle class="run" cx="{xs[i] + dx:.1f}" '
                     f'cy="{ys[run["gift_eval"][key]]:.1f}" r="3.5"/>'
@@ -698,6 +705,11 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
     return svg(width, height, "CRPS against MASE", parts + labels + [corner], standalone)
 
 
+def dots(result) -> list[dict]:
+    """The runs a record's mean comes from: the maintainers' retrains, or the reported runs."""
+    return result.get("retrains", result["runs"])
+
+
 def loss_chart(result) -> str:
     """Training loss of every run against step."""
     width, height, left, bottom, top, right = 960, 260, 56, 30, 14, 16
@@ -800,10 +812,17 @@ def details(entries) -> str:
             for run in result["runs"]
         )
         commit = result["commit"]
+        retrains = ""
+        if "retrains" in result:
+            scores = [f"{fmt(run['gift_eval'])}" for run in result["retrains"]]
+            retrains = (
+                "<p>The record is the mean of the maintainers' retrains, with new seeds: CRPS "
+                f"{', '.join(scores[:-1])} and {scores[-1]}. The team's runs:</p>"
+            )
         out.append(
             f"<details><summary>Record {i}: {esc(team['description'])} "
             f'<span class="dim">({result["gift_eval"]["crps"]:.4f})</span></summary>'
-            '<div class="body"><div class="scroll"><table class="runs"><tr><th>Seed</th>'
+            f'<div class="body">{retrains}<div class="scroll"><table class="runs"><tr><th>Seed</th>'
             "<th>GIFT-Eval CRPS</th><th>MASE</th><th>GEP-Val</th><th>GEP-Test</th>"
             f"<th>Training</th><th>GPU</th></tr>{runs}</table></div>"
             f"<p><b>Change from the previous record</b></p>{changes(result, previous)}"

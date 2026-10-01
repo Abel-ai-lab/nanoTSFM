@@ -25,11 +25,12 @@ commit, so any record can be reproduced and you may start from any of them.
   Report every run of that configuration, not the best ones.
 - **A record folder**, `records/<date>_<name>/`:
   - `README.md`, your report. Its front matter gives the team, a short description of the change,
-    one or two members with their GitHub handles, and any AI assistance.
+    one or two members with their GitHub handles, and any AI assistance. If your data differs from
+    the record's, the report says what changed, how you chose it, and why; without that, the
+    submission is closed without review ([rules](rules.md#data)).
   - `result.json`, written by `./run.sh submit`: the commit, configuration, data and versions, and
     for each run its checkpoint's SHA-256, training time, GIFT-Eval, GEP-Val and GEP-Test scores
     and training log, with the mean and spread over runs.
-- **A row in the README's record table**, if your runs beat the record.
 
 ## Steps
 
@@ -47,8 +48,7 @@ commit, so any record can be reproduced and you may start from any of them.
    ```
 
    `submit` writes `result.json`, checks each checkpoint and compares the runs with the record.
-3. If they beat it, add your row to the README's table: `./run.sh table` prints it.
-4. Commit the folder, push, and open a pull request from your branch to nanoTSFM's `main`. Its
+3. Commit the folder, push, and open a pull request from your branch to nanoTSFM's `main`. Its
    template asks for what changed and why, your results beside the record, an ablation, and how to
    reproduce.
 
@@ -58,10 +58,9 @@ a new pull request; keep one submission per team open at a time.
 
 ## The record rule
 
-A submission sets a record when its mean GIFT-Eval CRPS is below the record's by at least
-$2.33 \times 0.007 \times \sqrt{1/n + 1/m}$, where $n$ and $m$ are the two run counts and 0.007 is
-the baseline's seed spread: a one-sided test at $p < 0.01$. With three runs each the gap must be at
-least 0.013; more runs lower it.
+A submission sets a record when the mean GIFT-Eval CRPS of its three verified runs is below the
+record's by at least $2.33 \times 0.007 \times \sqrt{1/3 + 1/3} = 0.013$, where 0.007 is the
+baseline's spread between runs: a one-sided test at $p < 0.01$.
 
 ## Checks
 
@@ -74,7 +73,7 @@ least 0.013; more runs lower it.
 
 ## Review
 
-Maintainers read the code and the report, then retrain every run from the pull request with the
+Maintainers read the code and the report, then retrain your final configuration with the
 official fixed files, so your code trains and the official code scores:
 
 ```shell
@@ -83,7 +82,14 @@ git checkout origin/main -- src/nanotsfm/evaluation.py configs/gift-full.json sc
 uv run --extra gift python -m scripts.submission verify records/<folder> --output verify
 ```
 
-`verify` retrains each run, requires it to finish within the cap and to score within 0.01 of its
-report, and compares the verified mean with the record. It skips runs already verified in its
-output folder, so `--runs` can split the work across jobs; three full-hour runs take about 3.5
-A100-hours. A record is merged, squashed or not, and the record page updates itself.
+`verify` draws three new random seeds, retrains the configuration once with each, requires every
+retrain to finish within the cap, and compares the mean of the three with the record. Each retrain
+runs in its own process, as does each scoring. The seeds are kept in the output folder, and runs
+already verified there are skipped, so `--runs run-1` can split the work across jobs; three
+full-hour runs take about 3.5 A100-hours. `verify` also says whether your reported runs are
+within run-to-run noise of the retrains.
+
+`verify` writes `verified.json` into the record folder. The maintainers commit it to the pull
+request, with the README's record row from `./run.sh table` if the submission sets a record, then
+merge it, squashed or not; the record page updates itself. Otherwise the pull request is closed
+with its verified score.

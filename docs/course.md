@@ -54,9 +54,9 @@ syllabus asks for through the course's own channel.
 
 ## Final evaluation
 
-1. The organizers verify each submission by retraining every run, as the
-   [review](submission.md#review) describes. Runs count if their retrained scores are within 0.01
-   of the reported ones; if they fail, the team is contacted once to fix packaging problems.
+1. The organizers verify each submission by retraining it three times with new seeds, as the
+   [review](submission.md#review) describes; the mean of those runs is its verified score. If a
+   retrain fails, the team is contacted once to fix packaging problems.
 2. Points:
    - **1 point** if any of the team's submissions has a lower verified mean GIFT-Eval CRPS than the
      course bar: record 2, `Shu-Wan`, at 0.633.
@@ -83,7 +83,7 @@ Rankings decide awards, not grades.
 | Ablation and analysis | 20% | An ablation that isolates the change, and where the change helps or hurts |
 | Result | 20% | 10% for a submission that passes verification, and 10% more if it beats the course bar |
 | Report | 10% | Follows the template; every number comes from a run |
-| Reproducibility | 10% | The runs retrain to their reported scores from the public repository |
+| Reproducibility | 10% | Retrained from the public repository with new seeds, the runs match the reported mean within run-to-run noise |
 
 Each record a team sets adds 2% of extra credit, up to 10%. A rigorous negative result can earn full
 credit on every component except the result.

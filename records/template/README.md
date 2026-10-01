@@ -21,7 +21,9 @@ ablation test? Name the record you built on.
 ## Method
 
 The model, objective, data and sampling, configuration, parameter count, training time, and seeds.
-Explain how you chose your final model and which scores you looked at.
+Explain how you chose your final model and which scores you looked at. If your data differs from
+the record's, say what changed, how you chose it, and why; a submission that does not is closed
+without review.
 
 ## Results
 
