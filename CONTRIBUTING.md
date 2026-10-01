@@ -13,8 +13,8 @@
 3. Open a pull request from your branch with your code and `records/<YYYY-MM-DD>_<name>/`, and fill
    in its template.
 4. A check confirms the folder is well formed and the code matches the runs. A maintainer reads
-   the code, retrains every run on an A100 and merges the pull request if the verified runs beat
-   the record; otherwise it is closed with its verified score.
+   the code, retrains it three times on an A100 with new seeds and merges the pull request if
+   those runs beat the record; otherwise it is closed with its verified score.
 
 ## Keep pull requests small
 

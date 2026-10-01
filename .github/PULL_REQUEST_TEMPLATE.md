@@ -23,8 +23,8 @@ Title a submission "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
 
 - [ ] Every run of the final configuration is in `result.json`, trained at one pushed commit
       after merging `main`.
-- [ ] `./run.sh submit` passed and says whether the runs beat the record; if they do, the README's
-      record table has my row.
+- [ ] `./run.sh submit` passed and says whether the runs beat the record.
+- [ ] If my data differs from the record's, the report says what changed, how I chose it, and why.
 - [ ] My fork is public.
 - [ ] No runs, checkpoints, data or notebook outputs are committed.
 
