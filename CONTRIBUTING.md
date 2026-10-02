@@ -3,7 +3,7 @@
 ## Submitting a result
 
 1. Fork this repository and work on a branch of your fork, which must be public.
-2. Merge `main`, then train three or more seeds of your final configuration, score them on
+2. Merge `main`, then train three or more repeated runs of your final configuration, score them on
    GIFT-Eval and package them (see [submission](docs/submission.md)):
 
    ```shell
@@ -13,8 +13,8 @@
 3. Open a pull request from your branch with your code and `records/<YYYY-MM-DD>_<name>/`, and fill
    in its template.
 4. A check confirms the folder is well formed and the code matches the runs. A maintainer reads
-   the code, retrains every run on an A100 and merges the pull request if the verified runs beat
-   the record; otherwise it is closed with its verified score.
+   the code, retrains it three times on an A100 with new seeds and merges the pull request if
+   those runs beat the record; otherwise it is closed with its verified score.
 
 ## Keep pull requests small
 
@@ -28,18 +28,20 @@ Open an issue first, then a focused pull request that fills in the template's Ch
 maintainer reviews it.
 
 - **Training stays fixed.** A change to nanoTSFM leaves `src/`, `configs/`, `pyproject.toml` and
-  `uv.lock` alone, so `main` keeps training the current record and open submissions stay valid. A
-  check fails any pull request that changes these files without a record folder.
+  `uv.lock` alone, apart from the score's files, so `main` keeps training the current record and
+  open submissions stay valid. A check fails any pull request that changes these files without a
+  record folder.
 - **When training must change** (a bug fix, a dependency update), a maintainer re-runs the current
-  record's seeds at the new code and adds the `changes training` label. The change ships in a new
+  record's runs at the new code and adds the `changes training` label. The change ships in a new
   minor version. Open submissions then merge `main` and train again.
-- **The score's files**, `src/nanotsfm/evaluation.py` and `configs/gift-full.json`, change only in
-  a new major version. Maintainers own `scripts/submission.py` and `.github/`.
+- **The score's files**, `src/nanotsfm/evaluation.py`, `scripts/score.py` and
+  `configs/gift-full.json`, change a score only in a new major version. Maintainers own `scripts/`
+  and `.github/`.
 
 ## Versions
 
 Releases are tagged `vMAJOR.MINOR.PATCH`, and the version is in `pyproject.toml` and `CITATION.cff`.
 
-- **Major:** the score or the rules change, so results are not comparable across majors.
-- **Minor:** training code or dependencies change; the current record is re-verified.
+- **Major:** the score changes, so results are not comparable across majors.
+- **Minor:** the rules, training code or dependencies change; the current record is re-verified.
 - **Patch:** documentation and tools only.

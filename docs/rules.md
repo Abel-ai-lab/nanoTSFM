@@ -17,11 +17,14 @@ baseline scored 0.670 after 2 minutes, about 114th of 131 models on the leaderbo
   datasets the model never trains on, averaged geometrically over tasks. Lower is better; 1 matches
   Seasonal Naive. Like the leaderboard, we compute CRPS as the weighted quantile loss over the nine
   quantile levels. Relative MASE is reported beside it.
-- **Seeds:** runs vary by about $\pm 0.007$. Report the mean and spread over three seeds for every
-  configuration you compare, and treat smaller differences as noise.
-- **Evidence:** a submission reports every run of its final configuration, at least three seeds at
-  one commit. It sets a record when its mean beats the record's by the
-  [record rule](submission.md#the-record-rule): at least 0.013 with three runs each.
+- **Repeated runs:** runs with different seeds vary by about $\pm 0.007$. Report the mean and
+  spread over three repeated runs for every configuration you compare, and treat smaller differences
+  as noise.
+- **Evidence:** a submission reports every run of its final configuration, at least three repeated
+  runs at one commit.
+- **Verified score:** maintainers retrain the final configuration three times with new random
+  seeds, and the mean of those runs is the submission's score. It sets a record when that mean
+  beats the record's by the [record rule](submission.md#the-record-rule): at least 0.013.
 - `./run.sh eval <run>` computes the score in about 5 minutes on 8 CPU cores. The benchmark is
   public; your report explains how you chose your final model.
 
@@ -39,9 +42,10 @@ is the challenge.
 
 - At most 3,600 seconds of training per run, as `run.json` records. Setup, data loading,
   validation, checkpointing and evaluation are off the clock.
+- All model training happens on this clock, including any model that selects or weights data.
 - Final runs use an A100 80GB. Develop on any GPU; final runs on other hardware may be re-timed.
-- Maintainers verify every submission by retraining each run from its code on an A100 80GB: each
-  retrain must finish within the cap and score within 0.01 of its report.
+- Maintainers verify every submission by retraining it from its code on an A100 80GB, three
+  times with new seeds; each retrain must finish within the cap.
 
 ## Data
 
@@ -50,12 +54,19 @@ is the challenge.
   [GEP slices](data.md).
 - Not allowed: GIFT-Eval test data, other datasets, synthetic series, pretrained weights, and other
   models' forecasts. Training on GEP-Val or GEP-Test series is allowed but voids those diagnostics.
-- Your code must not read GIFT-Eval data while training or forecasting.
+- No code but the evaluator may read GIFT-Eval data, at any step: building data, training or
+  forecasting.
+- **Explain data changes.** If your data differs from the record's you build on, in selection,
+  mixing or preprocessing, the report says what changed, how you chose it, and why. A submission
+  that does not is closed without review.
 
 ## Fixed
 
-- `src/nanotsfm/evaluation.py`, `configs/gift-full.json`, `scripts/submission.py` and `.github/`:
-  maintainers verify every submission with the official versions of these files.
+- `src/nanotsfm/evaluation.py`, `configs/gift-full.json`, `scripts/` and `.github/`: maintainers
+  verify every submission with the official versions of these files, and a check fails any
+  submission that changes them.
+- Your code forecasts; official code scores. `evaluation.py` writes the GIFT-Eval forecasts, and
+  `scripts/score.py` scores them in its own process, which loads none of `src/`.
 - The forecast interface in the [README](../README.md), which the evaluator calls.
 
 Everything else is yours to change.

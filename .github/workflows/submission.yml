@@ -32,7 +32,9 @@ jobs:
             echo "A submission: the guard checks it."
             exit 0
           fi
-          changed=$(git diff --name-only HEAD^1 HEAD -- src configs pyproject.toml uv.lock)
+          # The score's files are fixed for submissions but do not decide training.
+          changed=$(git diff --name-only HEAD^1 HEAD -- src configs pyproject.toml uv.lock \
+            ':!src/nanotsfm/evaluation.py' ':!configs/gift-full.json')
           if [ -n "$changed" ]; then
             echo "::error::This pull request changes training files: $(echo $changed). See CONTRIBUTING.md."
             exit 1

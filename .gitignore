@@ -33,10 +33,11 @@ wandb/
 *.parquet
 *.arrow
 
-# A record folder holds exactly these files.
+# A record folder holds exactly these files; verify writes verified.json.
 /records/*/*
 !/records/*/README.md
 !/records/*/result.json
+!/records/*/verified.json
 
 external/
 dist/

@@ -2,7 +2,7 @@
 
 [![Data on Hugging Face][data-badge]][data]
 [![World record][record-badge]][site]
-[![Python 3.13][python-badge]][python]
+[![Python 3.12–3.14][python-badge]][python]
 [![License: MIT][license-badge]](LICENSE)
 
 **Hill-climbing GIFT-Eval with one A100 and one hour.**
@@ -45,12 +45,12 @@ The [rules](docs/rules.md) have the details.
 | # | GIFT-Eval CRPS | Description | Date | Record | Contributors |
 | ---: | --- | --- | --- | --- | --- |
 | 1 | $0.6699 \pm 0.0073$ | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
-| 2 | $0.6334 \pm 0.0033$ | Weight every series equally | 2026-09-29 | [2026-09-29_Shu-Wan](records/2026-09-29_Shu-Wan/) | [@Shu-Wan](https://github.com/Shu-Wan) |
+| 2 | $0.6316 \pm 0.0045$ | Weight every series equally | 2026-09-29 | [2026-09-29_Shu-Wan](records/2026-09-29_Shu-Wan/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
 Records are orange, published models are gray, a point's size shows its parameter count, and the
-star marks the best corner. A record is the $\text{mean} \pm \text{sd}$ of three or more verified
+star marks the best corner. A record is the $\text{mean} \pm \text{sd}$ of three verified
 runs and is decided on CRPS. See the [record page][site] for every run and [submission](docs/submission.md) for
 how to set a record.
 
@@ -78,7 +78,7 @@ The baseline on one A100 80GB with 8 CPU cores:
 | `./run.sh data` | 1 min, 730 MB |
 | `./run.sh train baseline` | 2.5 min: 110 s of training (5,000 steps, 3.4 GB of GPU memory), then GEP-Val |
 | `./run.sh test baseline` | 30 s |
-| `./run.sh eval baseline` | 5 min, plus a one-time 1 GB download |
+| `./run.sh eval baseline` | 5 min, plus a one-time 1 GB download; 1.4 GB of forecasts while it runs |
 
 ## Settings
 
@@ -97,7 +97,8 @@ Nothing needs configuring. To change a default, copy [`.env.example`](.env.examp
 | `src/nanotsfm/model.py` | Network, configuration, checkpoints, forecasting |
 | `src/nanotsfm/train.py` | Loss, masking, optimization, training clock |
 | `src/nanotsfm/data.py` | Loading, window sampling, variate packing |
-| `src/nanotsfm/evaluation.py` | GIFT-Eval and GEP scoring (fixed) |
+| `src/nanotsfm/evaluation.py` | GEP scoring, and GIFT-Eval forecasts for the scorer (fixed) |
+| `scripts/score.py` | GIFT-Eval scoring, in a process that loads none of `src/` (fixed) |
 | `run.sh` | Every command |
 | `configs/` | Training configurations and the GIFT-Eval task list |
 | `scripts/` | The submission tools and the record page |
@@ -135,7 +136,7 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 }
 ```
 
-[python-badge]: https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white
+[python-badge]: https://img.shields.io/badge/python-3.12%E2%80%933.14-3776AB?logo=python&logoColor=white
 [python]: https://www.python.org/downloads/
 [license-badge]: https://img.shields.io/badge/license-MIT-2E7A58
 [gift]: https://huggingface.co/spaces/Salesforce/GIFT-Eval

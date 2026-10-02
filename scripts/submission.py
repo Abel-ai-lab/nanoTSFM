@@ -11,23 +11,25 @@ import hashlib
 import json
 import math
 import os
+import random
+import shutil
 import statistics
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import yaml
 
 TIME_CAP_SECONDS = 3600
 TIME_MARGIN_SECONDS = 10
-TOLERANCE = 0.01  # largest GIFT-Eval difference between a retrained run and its report
-MIN_RUNS = 3
+MIN_RUNS = 3  # runs a submission reports, and runs the maintainers retrain
 SEED_SD = 0.007  # GIFT-Eval spread between seeds of the baseline
 Z = 2.33  # one-sided p < 0.01
 ROOT = Path(__file__).resolve().parents[1]
 RECORDS = "records"
 FROZEN = "src/nanotsfm/evaluation.py"
-FIXED = (FROZEN, "configs/gift-full.json", "scripts/submission.py", ".github/")
+FIXED = (FROZEN, "configs/gift-full.json", "scripts/", ".github/")
 # What decides training; the fixed evaluation files do not.
 TRAINING = (
     "src",
@@ -39,6 +41,7 @@ TRAINING = (
 )
 UPSTREAM = "https://github.com/Abel-ai-lab/nanoTSFM"
 FILES = ("README.md", "result.json")
+VERIFIED = "verified.json"  # written by verify, then committed by the maintainers
 TEAM_FIELDS = ("team", "description", "members", "ai_disclosure")
 MAX_MEMBERS = 2
 MAX_FILE_BYTES = 2**20
@@ -96,10 +99,11 @@ def check_result(result: dict):
 
 def check_folder(folder: Path):
     names = {p.name for p in folder.iterdir() if not p.name.startswith(".")}
-    missing, extra = sorted(set(FILES) - names), sorted(names - set(FILES))
+    missing, extra = sorted(set(FILES) - names), sorted(names - {*FILES, VERIFIED})
     if missing or extra:
         raise ValueError(
-            f"{folder} must hold exactly {', '.join(FILES)}; missing {missing}, extra {extra}"
+            f"{folder} must hold {', '.join(FILES)} and nothing else; missing {missing}, "
+            f"extra {extra}"
         )
 
 
@@ -133,24 +137,34 @@ def compare(new: dict, old: dict) -> dict:
 
 
 def records(tree: str | None = None) -> list[tuple[str, dict]]:
-    """Merged records as (folder, result), oldest first, from the work tree or a git tree."""
+    """Merged records as (folder, GIFT-Eval summary), oldest first, from the work tree or a tree.
+
+    A record's summary is that of the maintainers' retrains when its folder holds them.
+    """
     if tree is None:
         names = sorted(p.name for p in (ROOT / RECORDS).iterdir() if p.is_dir())
 
-        def read(name):
-            return (ROOT / RECORDS / name / "result.json").read_text()
+        def read(name, file):
+            path = ROOT / RECORDS / name / file
+            return path.read_text() if path.exists() else None
     else:
         names = sorted(git("ls-tree", "--name-only", f"{tree}:{RECORDS}").split())
+        files = set(git("ls-tree", "-r", "--name-only", tree, RECORDS).split())
 
-        def read(name):
-            return git("show", f"{tree}:{RECORDS}/{name}/result.json")
+        def read(name, file):
+            path = f"{RECORDS}/{name}/{file}"
+            return git("show", f"{tree}:{path}") if path in files else None
 
-    return [(name, json.loads(read(name))) for name in names if name != "template"]
+    return [
+        (name, json.loads(read(name, VERIFIED) or read(name, "result.json"))["gift_eval"])
+        for name in names
+        if name != "template"
+    ]
 
 
 def current_record(folder: Path, tree: str | None = None) -> tuple[str, dict] | None:
-    earlier = [(f, r) for f, r in records(tree) if f != folder.name]
-    return min(earlier, key=lambda item: item[1]["gift_eval"]["crps"]) if earlier else None
+    earlier = [(f, s) for f, s in records(tree) if f != folder.name]
+    return min(earlier, key=lambda item: item[1]["crps"]) if earlier else None
 
 
 def package(folder: Path, run_dirs: list[Path]) -> Path:
@@ -269,13 +283,13 @@ def check(folder: Path, run_dirs=()) -> dict:
     other = current_record(folder)
     if other:
         name, best = other
-        summary["record"] = {name: round(best["gift_eval"]["crps"], 4)}
-        summary.update(compare(result["gift_eval"], best["gift_eval"]))
+        summary["record"] = {name: round(best["crps"], 4)}
+        summary.update(compare(result["gift_eval"], best))
     return summary
 
 
 def gift_eval_checkout() -> Path:
-    from nanotsfm.evaluation import UPSTREAM_REVISION
+    from scripts.score import UPSTREAM_REVISION
 
     upstream = ROOT / "external/gift-eval"
     if not upstream.exists():
@@ -287,14 +301,17 @@ def gift_eval_checkout() -> Path:
     return upstream
 
 
+def python(module: str, *args) -> None:
+    """Run a module in its own process, so that participant code never loads into this one."""
+    subprocess.run([sys.executable, "-m", module, *map(str, args)], cwd=ROOT, check=True)
+
+
 def verify(folder: Path, output: Path, device="auto", official=UPSTREAM, only=()) -> dict:
-    """Retrain the runs (all, or `only`), then judge the record once every run is verified.
+    """Retrain the final configuration with new random seeds, then judge it on those runs.
 
-    Runs already verified in `output` are skipped, so the work can be split across jobs.
+    The seeds are drawn once and kept in `output`, and runs already verified there are skipped,
+    so the work can be split across jobs.
     """
-    from nanotsfm.evaluation import run as evaluate_gift
-    from nanotsfm.train import train
-
     git("fetch", "--quiet", official, "main")
     check(folder)
     result = json.loads((folder / "result.json").read_text())
@@ -302,46 +319,77 @@ def verify(folder: Path, output: Path, device="auto", official=UPSTREAM, only=()
     if result["data"]["kind"] == "custom":
         print("Custom data: build it with the command in the report before verifying.")
     output.mkdir(parents=True, exist_ok=True)
+    try:  # new seeds, so that reported runs picked from many seeds cannot set a record
+        with (output / "seeds.json").open("x") as stream:
+            stream.write(json.dumps(random.SystemRandom().sample(range(2**31), MIN_RUNS)) + "\n")
+    except FileExistsError:
+        pass
+    seeds = json.loads((output / "seeds.json").read_text())
+    names = [f"run-{k}" for k in range(1, len(seeds) + 1)]
     cores = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count()
-    for run in result["runs"]:
-        target = output / run["run"]
-        if (only and run["run"] not in only) or (target / "verified.json").exists():
+    for name, seed in zip(names, seeds, strict=True):
+        target = output / name
+        if (only and name not in only) or (target / "verified.json").exists():
             continue
         config = json.loads(json.dumps(result["config"]))
-        config["training"].update(device=device, seed=run["seed"])
+        config["training"].update(device=device, seed=seed)
         target.mkdir(parents=True, exist_ok=True)
         (target / "config.yaml").write_text(yaml.safe_dump(config))
-        checkpoint = train(target / "config.yaml", target / "run")
-        scored = evaluate_gift(
-            checkpoint,
-            gift_eval_checkout(),
-            ROOT / "configs/gift-full.json",
-            target / "gift.json",
-            device=device,
-            workers=min(16, cores or 1),
+        started = time.monotonic()
+        python("nanotsfm.train", "--config", target / "config.yaml", "--output", target / "run")
+        wall = time.monotonic() - started
+        suite = ("--upstream", gift_eval_checkout(), "--tasks", ROOT / "configs/gift-full.json")
+        workers = ("--workers", min(16, cores or 1))
+        checkpoint, forecasts = target / "run" / "checkpoint.pt", target / "gift-forecasts"
+        python(
+            "nanotsfm.evaluation",
+            "gift",
+            *("--checkpoint", checkpoint, "--output", forecasts, "--device", device),
+            *suite,
+            *workers,
         )
-        summary = json.loads(scored.read_text())["summary"]
-        seconds = json.loads((target / "run" / "run.json").read_text())["elapsed_seconds"]
-        if seconds > TIME_CAP_SECONDS + TIME_MARGIN_SECONDS:
-            raise ValueError(f"The retrain of {run['run']} took {seconds:.0f} s, over the cap")
-        reported = run["gift_eval"]["geometric_relative_crps"]
-        if abs(summary["geometric_relative_crps"] - reported) > TOLERANCE:
-            raise ValueError(
-                f"{run['run']} retrained to {summary['geometric_relative_crps']:.4f}, "
-                f"reported {reported:.4f}"
-            )
-        (target / "verified.json").write_text(json.dumps({**summary, "seconds": seconds}) + "\n")
-        print(f"{run['run']}: verified {summary['geometric_relative_crps']:.4f}")
-    done = [output / r["run"] / "verified.json" for r in result["runs"]]
+        python(
+            "scripts.score",
+            "--forecasts",
+            forecasts,
+            "--output",
+            target / "gift.json",
+            *suite,
+            *workers,
+        )
+        shutil.rmtree(forecasts)
+        run = json.loads((target / "run" / "run.json").read_text())
+        if run["elapsed_seconds"] > TIME_CAP_SECONDS + TIME_MARGIN_SECONDS:
+            raise ValueError(f"{name} trained for {run['elapsed_seconds']:.0f} s, over the cap")
+        verified = {
+            "seed": seed,
+            "training_seconds": run["elapsed_seconds"],
+            "wall_seconds": wall,  # the whole training process, setup included; for reference
+            "device": run["device_name"],
+            "gift_eval": json.loads((target / "gift.json").read_text())["summary"],
+        }
+        (target / "verified.json").write_text(json.dumps(verified) + "\n")
+        score = verified["gift_eval"]["geometric_relative_crps"]
+        print(f"{name}, seed {seed}: verified {score:.4f}")
+    done = [output / name / "verified.json" for name in names]
     if not all(path.exists() for path in done):
         return {"verified": False, "remaining": [p.parent.name for p in done if not p.exists()]}
-    verified = summarize([json.loads(path.read_text()) for path in done])
-    verdict = {"verified": True, "gift_eval": verified}
+    runs = [json.loads(path.read_text()) for path in done]
+    verified = {"gift_eval": summarize([r["gift_eval"] for r in runs]), "runs": runs}
+    (folder / VERIFIED).write_text(json.dumps(verified, indent=2) + "\n")
+    # Reported runs ahead of the retrains by more than run noise suggest picked seeds.
+    reproduced = not compare(result["gift_eval"], verified["gift_eval"])["beats"]
+    verdict = {
+        "verified": True,
+        "gift_eval": verified["gift_eval"],
+        "reported": {"crps": round(result["gift_eval"]["crps"], 4), "reproduced": reproduced},
+        "written": str(folder / VERIFIED),
+    }
     other = current_record(folder, tree="FETCH_HEAD")
     if not other:
         return verdict
     name, best = other
-    verdict.update(record=name, **compare(verified, best["gift_eval"]))
+    verdict.update(record=name, **compare(verified["gift_eval"], best))
     return verdict
 
 
@@ -368,7 +416,7 @@ def guard(changed: list[str]) -> str:
     other = current_record(folder)
     if not other:
         return f"{RECORDS}/{name}/ is well formed; a maintainer verifies it by retraining."
-    verdict = compare(result["gift_eval"], other[1]["gift_eval"])
+    verdict = compare(result["gift_eval"], other[1])
     claim = "claims a record" if verdict["beats"] else "does not beat the record"
     return (
         f"{RECORDS}/{name}/ is well formed and {claim} (gap {verdict['gap']}, needed "
@@ -387,12 +435,14 @@ def main():
     inspect = sub.add_parser("check", help="Check a record folder")
     inspect.add_argument("folder", type=Path)
     inspect.add_argument("--runs", type=Path, nargs="*", default=(), help="Run folders to check")
-    retrain = sub.add_parser("verify", help="Retrain and score a submission (maintainers)")
+    retrain = sub.add_parser("verify", help="Retrain a submission with new seeds (maintainers)")
     retrain.add_argument("folder", type=Path)
     retrain.add_argument("--output", type=Path, required=True, help="Folder for the retrains")
     retrain.add_argument("--device", default="auto")
     retrain.add_argument("--official", default=UPSTREAM, help="The official repository")
-    retrain.add_argument("--runs", nargs="*", default=(), help="Retrain only these runs")
+    retrain.add_argument(
+        "--runs", nargs="*", default=(), help="Retrain only these of run-1, run-2 and run-3"
+    )
     screen = sub.add_parser("guard", help="Check a pull request's changed files")
     screen.add_argument("changed", nargs="*")
     args = parser.parse_args()
@@ -406,7 +456,7 @@ def main():
             print(json.dumps(verdict, indent=2))
         else:
             print(guard(args.changed))
-    except (ValueError, FileNotFoundError, RuntimeError) as error:
+    except (ValueError, FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as error:
         sys.exit(f"error: {error}")
 
 
