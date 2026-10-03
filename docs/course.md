@@ -58,8 +58,9 @@ more compute can ask for it; each request is reviewed.
    course code; check that your balance increased. Join the nanoTSFM team before redeeming.
 4. You join nanoTSFM with the **Basic** role, which cannot create team pods; create pods in your
    **personal account**, where the redeemed credit pays for them.
-5. For a two-person project team, choose one member to redeem the team's code and operate the pods
-   in that member's personal account.
+5. For a two-person project team, one member redeems the code, then
+   [converts that personal account to a team account](https://docs.runpod.io/accounts-billing/manage-accounts#convert-to-a-team-account)
+   and invites the collaborator with the **Admin** role so both members can create pods there.
 
 ### Deploy a pod
 
