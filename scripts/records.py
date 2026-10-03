@@ -25,6 +25,14 @@ MILESTONES = {
     "TinyCast": {"mase": 0.774, "crps": 0.545, "parameters": 146_505},
     "Moirai-small": {"mase": 0.946, "crps": 0.650, "parameters": 13_827_528},
 }
+# More models from the same leaderboard, from well-known labs, drawn in the overall plot only: they
+# fill its gaps, so the climb from the baseline goes in even steps.
+STEPS = {
+    "Chronos-2": {"mase": 0.698, "crps": 0.485, "parameters": 119_477_664},
+    "Moirai-2.0-small": {"mase": 0.728, "crps": 0.516, "parameters": 11_387_208},
+    "YingLong-50m": {"mase": 0.822, "crps": 0.567, "parameters": 36_264_718},
+    "YingLong-6m": {"mase": 0.880, "crps": 0.609, "parameters": 7_319_566},
+}
 # (text, link, Simple Icons logo and its color)
 LINKS = [
     ("Code", REPO, "github/F4F5F1"),
@@ -591,7 +599,8 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         width, height, left, right, top, bottom = 400, 414, 46, 14, 62, 50
     record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
-    points += [(scores["mase"], scores["crps"]) for scores in MILESTONES.values()]
+    published = MILESTONES | STEPS
+    points += [(scores["mase"], scores["crps"]) for scores in published.values()]
     # Room on the better side, so the star stands apart from even the best model.
     spans = [max(p[axis] for p in points) - min(p[axis] for p in points) for axis in (0, 1)]
     lows = [min(p[axis] for p in points) - 0.25 * spans[axis] for axis in (0, 1)]
@@ -638,7 +647,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         start += 2 * r + 5 + 7 * len(label) + 18
     models = [
         (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"] or 1e7), name, scores)
-        for name, scores in MILESTONES.items()
+        for name, scores in published.items()
     ]
     records = [
         (x(r["gift_eval"]["mase"]), y(r["gift_eval"]["crps"]), radius(r["parameters"]))
