@@ -47,20 +47,35 @@ more compute can ask for it; each request is reviewed.
 
 ## Run on Runpod
 
-1. Redeem the course credit in the Runpod account you will use to create the pod.
-2. Open the [nanoTSFM template](https://console.runpod.io/hub/template/2zp46nns9i), choose one
-   **A100 80GB** with at least 8 CPU cores, and deploy an on-demand pod. Check its hourly price.
-3. Wait for setup to finish in the pod logs, then open **Connect -> Jupyter Lab**. Open
-   `nanoTSFM/runpod.ipynb`, select **nanoTSFM (Python 3.13)**, and run the cells in order.
+### Before you start
 
-The template clones a pinned revision of this repository into `/workspace/nanoTSFM`, runs
-`./run.sh setup` with Python 3.13.15 and `TORCH=cuda`, and registers the notebook kernel. First boot
-downloads Python and CUDA dependencies before Jupyter starts. Restarting preserves your checkout
-and runs setup again. The notebook runs the toy check, downloads the data, trains the unchanged
-baseline, plots a forecast, and prints aggregate relative CRPS and MASE for GEP-Val and the 97-task
-GIFT-Eval suite.
+1. [Runpod](https://www.runpod.io) rents cloud GPUs; create an account in the
+   [Runpod console](https://console.runpod.io). See the [Runpod docs](https://docs.runpod.io/).
+2. Send your Runpod account email to the course project mentor (email provided in class) and accept
+   the invitation to the nanoTSFM team; see the
+   [account guide](https://docs.runpod.io/accounts-billing/manage-accounts).
+3. In your personal account, open **Billing -> Credit codes** and use **Redeem code** to redeem the
+   course code; check that your balance increased. Join the nanoTSFM team before redeeming.
+4. You join nanoTSFM with the **Basic** role, which cannot create team pods; create pods in your
+   **personal account**, where the redeemed credit pays for them.
+5. For a two-person project team, choose one member to redeem the team's code and operate the pods
+   in that member's personal account.
 
-For a terminal workflow, open Jupyter's terminal:
+### Deploy a pod
+
+Deploy [manually](https://docs.runpod.io/get-started) or with a coding agent using the
+[official Runpod skills](https://github.com/runpod/runpod-plugins-official).
+
+Use the [nanoTSFM template](https://console.runpod.io/hub/template/2zp46nns9i) with one **A100 80GB**,
+at least 8 CPU cores, and on-demand pricing; check the hourly price before deploying.
+
+Wait for setup to finish in the pod logs, then connect to the pod. For an optional walkthrough,
+open **Connect -> Jupyter Lab**, open `nanoTSFM/runpod.ipynb`, and select **nanoTSFM (Python 3.13)**.
+
+If you prefer to work in the terminal, use any of Runpod's
+[connection options](https://docs.runpod.io/pods/connect-to-a-pod): web terminal, SSH, JupyterLab,
+VS Code or Cursor. Coding agents can follow the [agent setup](https://docs.runpod.io/agent-setup).
+Then run:
 
 ```shell
 cd /workspace/nanoTSFM
@@ -86,13 +101,20 @@ they are not an invoice total. Prices and download speeds vary. These first-run 
 imports and dataset downloads; training includes GEP-Val, while the 5,000 GPU training steps alone
 took 136.7 seconds. Allow several extra minutes for the initial Python/CUDA environment install.
 
-The run used the unchanged baseline at commit `e48259a`, seed 7: GIFT-Eval relative CRPS **0.6642**
-and MASE **0.9540** over all 97 tasks; GEP-Val CRPS **0.6216** over 129 tasks. The notebook reproduced
-the same scores on a second A100 pod. This is one seed, not a three-seed record submission.
+### Save your results
 
-Download `runs/baseline` before terminating the pod: termination deletes its files. **Terminate the
-pod when finished** to end GPU and pod-storage charges. Stopping retains paid storage. Setup,
-downloads and idle time are billed while the pod runs.
+Commit the small record folder (`README.md` and `result.json`) and push it to your fork, as
+[submission](submission.md) describes. Keep run folders out of Git: the measured baseline run was
+about 40 MB, mostly its checkpoint, and submissions reject files over 1 MB. Download any runs you
+want to keep through JupyterLab, `runpodctl send` or `scp`; see
+[transferring files](https://docs.runpod.io/pods/storage/transfer-files).
+
+**Terminate the pod when finished** to end GPU and pod-storage charges. Download your files first:
+termination deletes this template's pod storage. Stopping retains paid storage. Setup, downloads
+and idle time are billed while the pod runs.
+
+For help, open an [issue](https://github.com/Abel-ai-lab/nanoTSFM/issues) or contact the course
+project mentor (email provided in class).
 
 ## Hand-in
 
