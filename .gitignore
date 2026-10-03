@@ -23,6 +23,7 @@ __pycache__/
 /results/
 /checkpoints/
 /tmp/
+/docs/PR/
 /site/
 wandb/
 *.pt

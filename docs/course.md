@@ -45,6 +45,78 @@ Each team receives a \$50 Runpod credit code; a typical project uses \$20–40 o
 with an ASU Research Computing account can also use the Sol cluster at no cost. Teams that need
 more compute can ask for it; each request is reviewed.
 
+## Run on Runpod
+
+### Before you start
+
+1. [Runpod](https://www.runpod.io) rents cloud GPUs; create an account in the
+   [Runpod console](https://console.runpod.io). See the [Runpod docs](https://docs.runpod.io/).
+2. Send your Runpod account email to the course project mentor (email provided in class) and accept
+   the invitation to the nanoTSFM team; see the
+   [account guide](https://docs.runpod.io/accounts-billing/manage-accounts).
+3. In your personal account, open **Billing -> Credit codes** and use **Redeem code** to redeem the
+   course code; check that your balance increased. Join the nanoTSFM team before redeeming.
+4. You join nanoTSFM with the **Basic** role, which cannot create team pods; create pods in your
+   **personal account**, where the redeemed credit pays for them.
+5. For a two-person project team, one member redeems the code, then
+   [converts that personal account to a team account](https://docs.runpod.io/accounts-billing/manage-accounts#convert-to-a-team-account)
+   and invites the collaborator with the **Admin** role so both members can create pods there.
+
+### Deploy a pod
+
+Deploy [manually](https://docs.runpod.io/get-started) or with a coding agent using the
+[official Runpod skills](https://github.com/runpod/runpod-plugins-official).
+
+Use the [nanoTSFM template](https://console.runpod.io/hub/template/2zp46nns9i) with one **A100 80GB**,
+at least 8 CPU cores, and on-demand pricing; check the hourly price before deploying.
+
+Wait for setup to finish in the pod logs, then connect to the pod. For an optional walkthrough,
+open **Connect -> Jupyter Lab**, open `nanoTSFM/runpod.ipynb`, and select **nanoTSFM (Python 3.13)**.
+
+If you prefer to work in the terminal, use any of Runpod's
+[connection options](https://docs.runpod.io/pods/connect-to-a-pod): web terminal, SSH, JupyterLab,
+VS Code or Cursor. Coding agents can follow the [agent setup](https://docs.runpod.io/agent-setup).
+Then run:
+
+```shell
+cd /workspace/nanoTSFM
+./run.sh toy
+./run.sh data
+./run.sh train baseline
+./run.sh eval baseline
+```
+
+Measured September 30, 2026 on one Secure Cloud A100 80GB PCIe in EU-RO-1, with 16 allocated
+vCPUs, Python 3.13.15 and PyTorch 2.11.0+cu128, at \$1.59/hour:
+
+| Command | Wall time | Compute cost |
+| --- | ---: | ---: |
+| `./run.sh toy` | 151 s | \$0.067 |
+| `./run.sh data` | 99 s | \$0.044 |
+| `./run.sh train baseline` | 283 s | \$0.125 |
+| `./run.sh eval baseline` | 362 s | \$0.160 |
+
+The four commands took 14.9 minutes and cost about **\$0.40 in compute**, after environment setup.
+Costs are measured wall seconds times \$1.59/3,600, excluding storage, pod startup and idle time;
+they are not an invoice total. Prices and download speeds vary. These first-run timings include
+imports and dataset downloads; training includes GEP-Val, while the 5,000 GPU training steps alone
+took 136.7 seconds. Allow several extra minutes for the initial Python/CUDA environment install.
+
+### Save your results
+
+Commit the small record folder (`README.md` and `result.json`) and push it to your fork, as
+[submission](submission.md) describes. Keep run folders out of Git: the measured baseline run was
+about 40 MB, mostly its checkpoint, and submissions reject files over 1 MB. Download any runs you
+want to keep through JupyterLab, `runpodctl send` or `scp`; see
+[transferring files](https://docs.runpod.io/pods/storage/transfer-files).
+
+**Terminate the pod when finished** to end GPU and pod-storage charges. Download your files first:
+termination deletes this template's pod storage. Stopping retains paid storage. Setup, downloads
+and idle time are billed while the pod runs.
+
+For help, open an [issue](https://github.com/Abel-ai-lab/nanoTSFM/issues) or contact the course
+project mentor (email provided in class).
+
 ## Hand-in
 
 One member opens the team's pull request, as [submission](submission.md) describes, whether or not
