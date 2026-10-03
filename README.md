@@ -33,7 +33,7 @@ Set the world record on GIFT-Eval with at most one hour of training on one A100 
 
 - **Score:** GIFT-Eval relative CRPS over 97 tasks from 23 datasets the model never trains on,
   relative to Seasonal Naive and averaged geometrically. Lower is better; 1 matches Seasonal Naive.
-- **Data:** any part of GIFT-Eval Pretrain, and nothing else.
+- **Data:** any part of GIFT-Eval Pretrain.
 - **Fixed:** the evaluation code and the model's forecast interface.
 
 GEP-Val and GEP-Test, held-out series from the training corpus, are 20-second diagnostics. When they
