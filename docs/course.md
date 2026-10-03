@@ -1,6 +1,6 @@
 ---
 name: course
-description: Everything specific to the course - schedule, compute credit, final evaluation, grading and awards.
+description: Everything specific to the course - schedule, compute credit, final evaluation, grading and opportunities.
 meta:
   type: knowledge
 ---
@@ -10,8 +10,7 @@ meta:
 nanoTSFM is a Project II option in CSE 472: Social Media Mining (Fall 2026, Prof. Huan Liu; TA Ali
 Beigi), offered with the DMML lab. Teams of one or two students try to set the
 [record](submission.md) under the [rules](rules.md), and the organizers verify every submission the
-same way. Teams earn points for beating the course bar and for each record they set. The
-top-ranked team earns an internship opportunity and a publication opportunity.
+same way. Teams earn points for beating the baseline and for each record they set.
 
 When this page and the course syllabus disagree, follow the syllabus.
 
@@ -32,49 +31,60 @@ The project is planned for about two-thirds of the eight weeks; the last two are
 | Week | Dates | Work | Checkpoint |
 | --- | --- | --- | --- |
 | 1 | Sep 29 – Oct 5 | Find a teammate; set up and run `./run.sh toy` | Team and project chosen by October 7 |
-| 2 | Oct 6 – Oct 12 | Reproduce the current record with three repeated runs | Its GIFT-Eval within $\pm 0.01$ of the record |
+| 2 | Oct 6 – Oct 12 | Reproduce the current record with three runs using different seeds | Its GIFT-Eval within $\pm 0.01$ of the record |
 | 3 | Oct 13 – Oct 19 | Choose a hypothesis from [directions](directions.md); run cheap pilots, reading GEP-Val and GIFT-Eval together | One-paragraph proposal |
 | 4 | Oct 20 – Oct 26 | Implement the change and compare it with the record | — |
 | 5 | Oct 27 – Nov 2 | Run the ablation; start the report | — |
-| 6 | Nov 3 – Nov 9 | Three repeated final runs, GIFT-Eval, report, `./run.sh submit` | A first pull request |
+| 6 | Nov 3 – Nov 9 | Final push, GIFT-Eval, report, `./run.sh submit` | A first pull request |
 | 7–8 | Nov 10 – Nov 23 | Fix what the checks and the review find; improve and submit again | Pull request by November 23, 11:59 PM |
 
 ## Compute
 
-Each team receives a \$50 Runpod credit code; a typical project uses \$20–40 of A100 time. Students
+A one time \$50 RunPod credit code will be provided to **each team**; a typical project uses \$20–40 of A100 time. Students
 with an ASU Research Computing account can also use the Sol cluster at no cost. Teams that need
 more compute can ask for it; each request is reviewed.
 
-## Run on Runpod
+Additional compute is available upon application and will be allocated on a case-by-case basis.
+
+## Run on RunPod
 
 ### Before you start
 
-1. [Runpod](https://www.runpod.io) rents cloud GPUs; [create an account](https://runpod.io?ref=j5jduepq). [Runpod docs](https://docs.runpod.io/).
-2. Send your Runpod account email to the course project mentor (email provided in class) and accept
-   the invitation to the nanoTSFM team; see the
-   [account guide](https://docs.runpod.io/accounts-billing/manage-accounts).
-3. In your personal account, open **Billing -> Credit codes** and use **Redeem code** to redeem the
-   course code; check that your balance increased. Join the nanoTSFM team before redeeming.
-4. You join nanoTSFM with the **Basic** role, which cannot create team pods; create pods in your
-   **personal account**, where the redeemed credit pays for them.
-5. For a two-person project team, one member redeems the code, then
-   [converts that personal account to a team account](https://docs.runpod.io/accounts-billing/manage-accounts#convert-to-a-team-account)
-   and invites the collaborator with the **Admin** role so both members can create pods there.
+1. **Create a RunPod account.** Create an account at [RunPod](https://runpod.io?ref=uo515wqr). See the [RunPod documentation](https://docs.runpod.io/).
+
+2. **Join the course team.** Send your RunPod account email to the course project mentor. You will receive an invitation to join the nanoTSFM team. **Only one member of each project team needs to do this.** See the [account guide](https://docs.runpod.io/accounts-billing/manage-accounts).
+
+3. **Receive your credit code.** After you accept the invitation and join the nanoTSFM team, the course project mentor will send you the course credit code.
+
+4. **Redeem the credit.** In your **personal account**, open **Billing -> Credit codes**, enter your credit code and click **Redeem code**. Redeem the course code and confirm that your balance has increased. **You must join the nanoTSFM team before redeeming the code.**
+
+5. **Create your pod.** Create pods from your **personal account**. The redeemed course credit will be used to pay for them.
+
+6. **Optional: share the credit with your teammate.** If you want both team members to use the same credit balance, [convert your personal account to a team account](https://docs.runpod.io/accounts-billing/manage-accounts#convert-to-a-team-account), then invite your teammate with the **Admin** role.
 
 ### Deploy a pod
 
-Deploy [manually](https://docs.runpod.io/get-started) or with a coding agent using the
-[official Runpod skills](https://github.com/runpod/runpod-plugins-official).
+You can deploy a pod [manually](https://docs.runpod.io/get-started) or with a coding agent using the
+[official RunPod skills](https://github.com/RunPod/RunPod-plugins-official).
 
-Use the [nanoTSFM template](https://console.runpod.io/hub/template/2zp46nns9i) with one **A100 80GB**,
-at least 8 CPU cores, and on-demand pricing; check the hourly price before deploying.
+For manual deployment:
 
-Wait for setup to finish in the pod logs, then connect to the pod. For an optional walkthrough,
-open **Connect -> Jupyter Lab**, open `nanoTSFM/runpod.ipynb`, and select **nanoTSFM (Python 3.13)**.
+1. Open the [nanoTSFM RunPod template](https://console.runpod.io/hub/template/2zp46nns9i).
+2. Click **Deploy** to open the GPU selection page.
+3. Select **A100 80GB** as the GPU, with **1 GPU**.
+4. Choose a configuration with at least **8 CPU cores** and use **on-demand** pricing.
+5. Check the hourly price, then deploy the pod.
 
-If you prefer to work in the terminal, use any of Runpod's
-[connection options](https://docs.runpod.io/pods/connect-to-a-pod): web terminal, SSH, JupyterLab,
-VS Code or Cursor. Coding agents can follow the [agent setup](https://docs.runpod.io/agent-setup).
+After deployment, wait for the setup process to finish in the pod logs before connecting.
+
+For an optional walkthrough, open **Connect -> Jupyter Lab**, then open
+`nanoTSFM/RunPod.ipynb` and select the **nanoTSFM (Python 3.13)** kernel.
+
+If you prefer to work in the terminal, RunPod supports several
+[connection options](https://docs.runpod.io/pods/connect-to-a-pod), including the web terminal,
+SSH, JupyterLab, VS Code, and Cursor. Coding agents can follow the
+[agent setup guide](https://docs.runpod.io/agent-setup).
+
 Then run:
 
 ```shell
@@ -130,20 +140,11 @@ syllabus asks for through the course's own channel.
    retrain fails, the team is contacted once to fix packaging problems.
 2. Points:
    - **1 point** if any of the team's submissions has a lower verified mean GIFT-Eval CRPS than the
-     course bar: record 2, `Shu-Wan`, at 0.632.
+     baseline: record 2, `Shu-Wan`, at 0.632.
    - **1 point** for each record the team sets during the course, under the
      [record rule](submission.md#the-record-rule).
 3. Teams are ranked by points, then by the verified mean CRPS of their best submission, then by its
    mean MASE.
-
-## Awards
-
-The top-ranked team earns:
-
-- **An internship opportunity** with the organizing group; its partner and terms will be announced.
-- **A publication opportunity:** co-authoring a write-up of the results.
-
-Rankings decide awards, not grades.
 
 ## Grading
 
@@ -164,3 +165,10 @@ credit on every component except the result.
 - The [rules](rules.md) apply.
 - Work alone or in a team of two. The report states what each member did.
 - Disclose AI assistance in the report, and cite borrowed code and ideas.
+
+## Opportunities
+
+Strong performance in the project may lead to opportunities beyond the course:
+
+- **Publication opportunity:** teams that produce strong and meaningful results may be invited to contribute to a publication based on the project.
+- **Internship opportunity:** outstanding students may be considered for an internship with [Abel AI](https://abel.ai).
