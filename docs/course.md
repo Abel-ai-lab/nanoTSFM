@@ -10,7 +10,7 @@ meta:
 nanoTSFM is a Project II option in CSE 472: Social Media Mining (Fall 2026, Prof. Huan Liu; TA Ali
 Beigi), offered with the DMML lab. Teams of one or two students try to set the
 [record](submission.md) under the [rules](rules.md), and the organizers verify every submission the
-same way. Teams earn points for beating the course bar and for each record they set.
+same way. Teams earn points for beating the baseline and for each record they set.
 
 When this page and the course syllabus disagree, follow the syllabus.
 
@@ -140,7 +140,7 @@ syllabus asks for through the course's own channel.
    retrain fails, the team is contacted once to fix packaging problems.
 2. Points:
    - **1 point** if any of the team's submissions has a lower verified mean GIFT-Eval CRPS than the
-     course bar: record 2, `Shu-Wan`, at 0.632.
+     baseline: record 2, `Shu-Wan`, at 0.632.
    - **1 point** for each record the team sets during the course, under the
      [record rule](submission.md#the-record-rule).
 3. Teams are ranked by points, then by the verified mean CRPS of their best submission, then by its
