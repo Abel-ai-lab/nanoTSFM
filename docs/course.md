@@ -45,12 +45,16 @@ Each team receives a \$50 Runpod credit code; a typical project uses \$20–40 o
 with an ASU Research Computing account can also use the Sol cluster at no cost. Teams that need
 more compute can ask for it; each request is reviewed.
 
+**Additional compute is available by application and will be allocated on a case-by-case basis.**
+Teams that need additional compute should contact the course project mentor with a brief explanation
+of why it is needed and the amount of compute requested.
+
 ## Run on Runpod
 
 ### Before you start
 
-1. [Runpod](https://www.runpod.io) rents cloud GPUs; [create an account](https://runpod.io?ref=j5jduepq). [Runpod docs](https://docs.runpod.io/).
-2. Send your Runpod account email to the course project mentor (email provided in class) and accept
+1. [Runpod](https://www.runpod.io) rents cloud GPUs; [create an account](https://runpod.io?ref=uo515wqr). [Runpod docs](https://docs.runpod.io/).
+2. Send your Runpod account email to the course project mentor and accept
    the invitation to the nanoTSFM team; see the
    [account guide](https://docs.runpod.io/accounts-billing/manage-accounts).
 3. In your personal account, open **Billing -> Credit codes** and use **Redeem code** to redeem the
@@ -59,7 +63,7 @@ more compute can ask for it; each request is reviewed.
    **personal account**, where the redeemed credit pays for them.
 5. For a two-person project team, one member redeems the code, then
    [converts that personal account to a team account](https://docs.runpod.io/accounts-billing/manage-accounts#convert-to-a-team-account)
-   and invites the collaborator with the **Admin** role so both members can create pods there.
+   and invites the other team member with the **Admin** role so both members can share the credits.
 
 ### Deploy a pod
 
