@@ -49,8 +49,7 @@ more compute can ask for it; each request is reviewed.
 
 ### Before you start
 
-1. [Runpod](https://www.runpod.io) rents cloud GPUs; create an account in the
-   [Runpod console](https://console.runpod.io). See the [Runpod docs](https://docs.runpod.io/).
+1. [Runpod](https://www.runpod.io) rents cloud GPUs; [create an account](https://runpod.io?ref=j5jduepq). [Runpod docs](https://docs.runpod.io/).
 2. Send your Runpod account email to the course project mentor (email provided in class) and accept
    the invitation to the nanoTSFM team; see the
    [account guide](https://docs.runpod.io/accounts-billing/manage-accounts).
