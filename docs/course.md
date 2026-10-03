@@ -44,7 +44,7 @@ A one time \$50 RunPod credit code will be provided to **each team**; a typical 
 with an ASU Research Computing account can also use the Sol cluster at no cost. Teams that need
 more compute can ask for it; each request is reviewed.
 
-Additional compute is available by application and will be allocated on a case-by-case basis.
+Additional compute is available upon application and will be allocated on a case-by-case basis.
 
 ## Run on RunPod
 
@@ -56,7 +56,7 @@ Additional compute is available by application and will be allocated on a case-b
 
 3. **Receive your credit code.** After you accept the invitation and join the nanoTSFM team, the course project mentor will send you the course credit code.
 
-4. **Redeem the credit.** In your **personal account**, open **Billing -> Credit codes** and select **Redeem code**. Redeem the course code and confirm that your balance has increased. **You must join the nanoTSFM team before redeeming the code.**
+4. **Redeem the credit.** In your **personal account**, open **Billing -> Credit codes**, enter your credit code and click **Redeem code**. Redeem the course code and confirm that your balance has increased. **You must join the nanoTSFM team before redeeming the code.**
 
 5. **Create your pod.** Create pods from your **personal account**. The redeemed course credit will be used to pay for them.
 
@@ -116,7 +116,7 @@ took 136.7 seconds. Allow several extra minutes for the initial Python/CUDA envi
 Commit the small record folder (`README.md` and `result.json`) and push it to your fork, as
 [submission](submission.md) describes. Keep run folders out of Git: the measured baseline run was
 about 40 MB, mostly its checkpoint, and submissions reject files over 1 MB. Download any runs you
-want to keep through JupyterLab, `RunPodctl send` or `scp`; see
+want to keep through JupyterLab, `runpodctl send` or `scp`; see
 [transferring files](https://docs.runpod.io/pods/storage/transfer-files).
 
 **Terminate the pod when finished** to end GPU and pod-storage charges. Download your files first:
