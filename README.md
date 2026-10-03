@@ -114,8 +114,7 @@ marks missing values) and returns nine quantiles `[B,V,H,9]` in original units.
 - [Directions](docs/directions.md): improvement ideas by pipeline stage, with pilot results.
 - [Submission](docs/submission.md): submitting a result, and how maintainers verify it.
 - [Contributing](CONTRIBUTING.md): pull request rules.
-- [Course](docs/course.md): schedule, final evaluation, awards.
-- [To do](docs/todo.md): open work.
+- [Course](docs/course.md): schedule, evaluations.
 
 ## Acknowledgements
 
