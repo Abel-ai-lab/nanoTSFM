@@ -14,10 +14,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
-# GIFT-Eval leaderboard at gift-eval commit 9a014e9: models without test leakage. Parameter counts
-# are the safetensors totals on each model's Hugging Face page. The leaderboard ranks entries by
-# their average rank over tasks; its first, STRIDE w/ Synapse, is an agentic system with no
-# published size, which the figures draw as a diamond.
+# GIFT-Eval leaderboard at gift-eval commit 8e6da59: models without test leakage. Parameter counts
+# are the safetensors totals on each model's Hugging Face page; Timestral's are the rounded sizes
+# on its model cards. The leaderboard ranks entries by their average rank over tasks; its first,
+# STRIDE w/ Synapse, is an agentic system with no published size, which the figures draw as a
+# diamond.
 MILESTONES = {
     "STRIDE w/ Synapse": {"mase": 0.625, "crps": 0.423, "parameters": None, "short": "STRIDE"},
     "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
@@ -26,12 +27,15 @@ MILESTONES = {
     "Moirai-small": {"mase": 0.946, "crps": 0.650, "parameters": 13_827_528},
 }
 # More models from the same leaderboard, from well-known labs, drawn in the overall plot only: they
-# fill its gaps, so the climb from the baseline goes in even steps.
+# fill its gaps, so the climb from the baseline goes in even steps. Mistral AI's Timestral-209M
+# ranks first among models that are neither agentic nor fine-tuned; Timestral-5M is its smallest.
 STEPS = {
     "Chronos-2": {"mase": 0.698, "crps": 0.485, "parameters": 119_477_664},
     "Moirai-2.0-small": {"mase": 0.728, "crps": 0.516, "parameters": 11_387_208},
     "YingLong-50m": {"mase": 0.822, "crps": 0.567, "parameters": 36_264_718},
     "YingLong-6m": {"mase": 0.880, "crps": 0.609, "parameters": 7_319_566},
+    "Timestral-209M": {"mase": 0.658, "crps": 0.446, "parameters": 209_000_000},
+    "Timestral-5M": {"mase": 0.705, "crps": 0.479, "parameters": 5_210_000},
 }
 # (text, link, Simple Icons logo and its color)
 LINKS = [

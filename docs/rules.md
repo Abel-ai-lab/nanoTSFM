@@ -8,7 +8,7 @@ meta:
 # Rules
 
 Set the record on GIFT-Eval with at most one hour of training on one A100 80GB-class GPU. The
-baseline scored 0.670 after 2 minutes, about 114th of 131 models on the leaderboard; the
+baseline scored 0.670 after 2 minutes, about 134th of 151 models on the leaderboard; the
 [README](../README.md#world-record) has the current record.
 
 ## Score
