@@ -14,10 +14,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
-# GIFT-Eval leaderboard at gift-eval commit 9a014e9: models without test leakage. Parameter counts
-# are the safetensors totals on each model's Hugging Face page. The leaderboard ranks entries by
-# their average rank over tasks; its first, STRIDE w/ Synapse, is an agentic system with no
-# published size, which the figures draw as a diamond.
+# GIFT-Eval leaderboard at gift-eval commit 8e6da59: models without test leakage. Scoring stays at
+# 9a014e9 (scripts/score.py); Seasonal Naive's results are the same file at both commits. Parameter
+# counts are the safetensors totals on each model's Hugging Face page; Timestral's are approximate,
+# from its model cards. The leaderboard ranks entries by their average rank over tasks; its first,
+# STRIDE w/ Synapse, is an agentic system with no published size, which the figures draw as a
+# diamond.
 MILESTONES = {
     "STRIDE w/ Synapse": {"mase": 0.625, "crps": 0.423, "parameters": None, "short": "STRIDE"},
     "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
@@ -26,8 +28,16 @@ MILESTONES = {
     "Moirai-small": {"mase": 0.946, "crps": 0.650, "parameters": 13_827_528},
 }
 # More models from the same leaderboard, from well-known labs, drawn in the overall plot only: they
-# fill its gaps, so the climb from the baseline goes in even steps.
+# fill its gaps, so the climb from the baseline goes in even steps. Mistral AI's Timestral-209M is
+# second on the leaderboard, after STRIDE w/ Synapse; Timestral-5M is the family's smallest size.
 STEPS = {
+    "Timestral-209M": {
+        "mase": 0.658,
+        "crps": 0.446,
+        "parameters": 209_000_000,
+        "short": "Timestral",
+    },
+    "Timestral-5M": {"mase": 0.705, "crps": 0.479, "parameters": 5_210_000},
     "Chronos-2": {"mase": 0.698, "crps": 0.485, "parameters": 119_477_664},
     "Moirai-2.0-small": {"mase": 0.728, "crps": 0.516, "parameters": 11_387_208},
     "YingLong-50m": {"mase": 0.822, "crps": 0.567, "parameters": 36_264_718},
@@ -133,7 +143,7 @@ svg .grid {{ stroke: var(--rule); }}
 svg .ref {{ stroke: var(--milestone); stroke-dasharray: 5 5; }}
 svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
 svg .run {{ fill: var(--run); }}
-svg .model {{ fill: var(--milestone); }}
+svg .model {{ fill: var(--milestone); stroke: var(--paper); stroke-width: 1.5; }}
 svg .key {{ fill: var(--paper); stroke: var(--milestone); }}
 svg .star {{ fill: var(--accent); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
@@ -200,7 +210,8 @@ STANDALONE = """<style>
 .tick { fill: #6B7682; font: 12px Menlo, Consolas, monospace; }
 .grid { stroke: #E1E4E0; } .ref { stroke: #8C99A6; stroke-dasharray: 5 5; }
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
-.model { fill: #8C99A6; } .key { fill: #FFFFFF; stroke: #8C99A6; } .star { fill: #D9622B; }
+.model { fill: #8C99A6; stroke: #FFFFFF; stroke-width: 1.5; }
+.key { fill: #FFFFFF; stroke: #8C99A6; } .star { fill: #D9622B; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
 .change { fill: #D9622B; font: 12.5px Arial, sans-serif; }
