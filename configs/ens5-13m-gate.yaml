@@ -1,0 +1,42 @@
+model:
+  context_length: 1024
+  prediction_length: 512
+  patch_length: 32
+  width: 384
+  layers: 6
+  heads: 8
+  dropout: 0.0
+  polyphase_forecast_strides:
+  - 2
+  - 4
+  polyphase_forecast_weight: 0.25
+  phase_tokens: true
+  polyphase_forecast_period: true
+  infer_candidates:
+  - deseason
+  infer_min_season: 0.7
+  infer_margin: 0.3
+  infer_clamp: 1.0
+training:
+  data: GEP-L
+  steps: 8000
+  batch_size: 256
+  learning_rate: 0.002
+  seed: 7
+  device: auto
+  max_seconds: 3600
+  checkpoint_every: 1000
+  source_power: 0.5
+  augment:
+    sign_flip: 0.5
+    time_reversal: 0.5
+    stride: 0.25
+    block_mean: 0.25
+    offset: 0.5
+    rescale: 0.5
+  polyphase_share: 0.25
+  polyphase_strides:
+  - 2
+  - 4
+  channel_limit: 1
+  ensemble_size: 5
