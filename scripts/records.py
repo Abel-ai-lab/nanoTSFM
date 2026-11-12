@@ -39,15 +39,15 @@ STEPS = {
     "YingLong-50m": {"mase": 0.822, "crps": 0.567, "parameters": 36_264_718},
 }
 # Simons, Abel AI Lab's open time series foundation models, grew from this repository's baseline
-# through automated research (SIMONS). The overall plot draws its four sizes in teal, joined by a
-# line, smallest first, with one label for the family (`label`; an empty one draws none). Their
-# scores are those of the GIFT-Eval submission (gift-eval pull 251), from the benchmark's own
-# scoring code; the parameter counts are the safetensors totals on their Hugging Face pages.
+# through automated research (SIMONS). The overall plot draws the smallest and the largest of its
+# four sizes in teal, joined by a line, with one label for the family (`label`; an empty one draws
+# none): Simons-60M (MASE 0.681, CRPS 0.465) and Simons-178M (0.675, 0.461) lie between the two
+# and would cover them. The scores are those of the GIFT-Eval submission (gift-eval pull 251),
+# from the benchmark's own scoring code; the parameter counts are the safetensors totals on the
+# models' Hugging Face pages.
 SIMONS = "https://github.com/Abel-ai-lab/Simons"
 OURS = {
     "Simons-25M": {"mase": 0.686, "crps": 0.468, "parameters": 25_121_568, "label": ""},
-    "Simons-60M": {"mase": 0.681, "crps": 0.465, "parameters": 60_319_008, "label": ""},
-    "Simons-178M": {"mase": 0.675, "crps": 0.461, "parameters": 177_746_208, "label": ""},
     "Simons-297M": {
         "mase": 0.673,
         "crps": 0.457,

@@ -52,10 +52,10 @@ The [rules](docs/rules.md) have the details.
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
-Records are orange, published models are gray, the four [Simons][simons] models are teal, a
-point's size shows its parameter count, and the star marks the best corner. A record is the $\text{mean} \pm \text{sd}$ of
-three verified runs and is decided on CRPS. See the [record page][site] for every run and
-[submission](docs/submission.md) for how to set a record.
+Records are orange, published models are gray, the [Simons][simons] family is teal (its smallest and
+largest model), a point's size shows its parameter count, and the star marks the best corner. A
+record is the $\text{mean} \pm \text{sd}$ of three verified runs and is decided on CRPS. See the
+[record page][site] for every run and [submission](docs/submission.md) for how to set a record.
 
 ## Data
 
