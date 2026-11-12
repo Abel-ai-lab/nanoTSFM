@@ -17,19 +17,17 @@ REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
 # GIFT-Eval leaderboard at gift-eval commit 8e6da59: models without test leakage. Scoring stays at
 # 9a014e9 (scripts/score.py); Seasonal Naive's results are the same file at both commits. Parameter
 # counts are the safetensors totals on each model's Hugging Face page; Timestral's are approximate,
-# from its model cards. The leaderboard ranks entries by their average rank over tasks; its first,
-# STRIDE w/ Synapse, is an agentic system with no published size, which the figures draw as a
-# diamond.
+# from its model cards. The leaderboard ranks entries by their average rank over tasks; its first
+# entry is an agentic system, which the figures leave out.
 MILESTONES = {
-    "STRIDE w/ Synapse": {"mase": 0.625, "crps": 0.423, "parameters": None, "short": "STRIDE"},
     "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
     "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524, "parameters": 4_144_448},
     "TinyCast": {"mase": 0.774, "crps": 0.545, "parameters": 146_505},
     "Moirai-small": {"mase": 0.946, "crps": 0.650, "parameters": 13_827_528},
 }
 # More models from the same leaderboard, from well-known labs, drawn in the overall plot only: they
-# fill its gaps, so the climb from the baseline goes in even steps. Mistral AI's Timestral-209M is
-# second on the leaderboard, after STRIDE w/ Synapse; Timestral-5M is the family's smallest size.
+# fill its gaps on the climb from the baseline. Mistral AI's Timestral-209M is the leaderboard's
+# best model.
 STEPS = {
     "Timestral-209M": {
         "mase": 0.658,
@@ -37,19 +35,26 @@ STEPS = {
         "parameters": 209_000_000,
         "short": "Timestral",
     },
-    "Timestral-5M": {"mase": 0.705, "crps": 0.479, "parameters": 5_210_000},
     "Chronos-2": {"mase": 0.698, "crps": 0.485, "parameters": 119_477_664},
-    "Moirai-2.0-small": {"mase": 0.728, "crps": 0.516, "parameters": 11_387_208},
     "YingLong-50m": {"mase": 0.822, "crps": 0.567, "parameters": 36_264_718},
-    "YingLong-6m": {"mase": 0.880, "crps": 0.609, "parameters": 7_319_566},
 }
 # Simons, Abel AI Lab's open time series foundation models, grew from this repository's baseline
-# through automated research (SIMONS). The overall plot draws its largest model in teal. Its scores
-# are those of its GIFT-Eval submission (gift-eval pull 251), from the benchmark's own scoring
-# code; its parameter count is the safetensors total on its Hugging Face page.
+# through automated research (SIMONS). The overall plot draws its four sizes in teal, joined by a
+# line, smallest first, with one label for the family (`label`; an empty one draws none). Their
+# scores are those of the GIFT-Eval submission (gift-eval pull 251), from the benchmark's own
+# scoring code; the parameter counts are the safetensors totals on their Hugging Face pages.
 SIMONS = "https://github.com/Abel-ai-lab/Simons"
 OURS = {
-    "Simons-297M": {"mase": 0.673, "crps": 0.457, "parameters": 297_230_368, "ours": True},
+    "Simons-25M": {"mase": 0.686, "crps": 0.468, "parameters": 25_121_568, "label": ""},
+    "Simons-60M": {"mase": 0.681, "crps": 0.465, "parameters": 60_319_008, "label": ""},
+    "Simons-178M": {"mase": 0.675, "crps": 0.461, "parameters": 177_746_208, "label": ""},
+    "Simons-297M": {
+        "mase": 0.673,
+        "crps": 0.457,
+        "parameters": 297_230_368,
+        "label": "Simons · 25M to 297M",
+        "short": "Simons",
+    },
 }
 # (text, link, Simple Icons logo and its color)
 LINKS = [
@@ -103,10 +108,9 @@ MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1
   crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.spec'),
   {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false})"></script>"""
 RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
-FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard; the
-diamond is STRIDE w/ Synapse, ranked first on the leaderboard, an agentic system. In the two
-panels by metric, each small gray dot is one verified run and the orange line is the record, the
-mean of its runs. Records are decided on CRPS."""
+FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
+the two panels by metric, each small gray dot is one verified run and the orange line is the
+record, the mean of its runs. Records are decided on CRPS."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
@@ -154,6 +158,7 @@ svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-s
 svg .run {{ fill: var(--run); }}
 svg .model {{ fill: var(--milestone); stroke: var(--paper); stroke-width: 1.5; }}
 svg .model.ours, svg .rlabel.ours {{ fill: var(--ours); }}
+svg .family {{ fill: none; stroke: var(--ours); stroke-width: 2; }}
 svg .key {{ fill: var(--paper); stroke: var(--milestone); }}
 svg .star {{ fill: var(--accent); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
@@ -222,6 +227,7 @@ STANDALONE = """<style>
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
 .model { fill: #8C99A6; stroke: #FFFFFF; stroke-width: 1.5; }
 .model.ours, .rlabel.ours { fill: #0A7F85; }
+.family { fill: none; stroke: #0A7F85; stroke-width: 2; }
 .key { fill: #FFFFFF; stroke: #8C99A6; } .star { fill: #D9622B; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
@@ -396,11 +402,12 @@ def tips(standalone):
         )
 
     def model(name, scores):
-        lines = (f"MASE {scores['mase']:.3f}", f"CRPS {scores['crps']:.3f}")
-        if scores["parameters"] is None:
-            return tip(name, *lines, "Ranked first on the leaderboard; an agentic system")
-        lines += (f"{size(scores['parameters'])} parameters",)
-        if scores.get("ours"):  # the model that grew from this baseline links to its repository
+        lines = (
+            f"MASE {scores['mase']:.3f}",
+            f"CRPS {scores['crps']:.3f}",
+            f"{size(scores['parameters'])} parameters",
+        )
+        if name in OURS:  # a model that grew from this baseline links to its repository
             link = "" if standalone else f' data-link="{SIMONS}"'
             return link + tip(name, *lines, "Built from this baseline with automated research")
         return tip(name, *lines)
@@ -677,7 +684,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         )
         start += 2 * r + 5 + 7 * len(label) + 18
     models = [
-        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"] or 1e7), name, scores)
+        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"]), name, scores)
         for name, scores in published.items()
     ]
     records = [
@@ -718,25 +725,21 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         labels.append(
             f'<text class="change" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
+    family = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy, _, name, _ in models if name in OURS)
+    parts.append(f'<path class="family" d="M{family}"/>')
     for cx, cy, r, name, scores in models:
-        short = scores.get("short", name)
-        ours = " ours" * bool(scores.get("ours"))
-        if scores["parameters"] is None:  # an agentic system: a diamond, with no size
-            label = short if narrow else f"{name} · agentic"
-            parts.append(
-                f'<path class="model" d="M{cx:.1f},{cy - r:.1f} L{cx + r:.1f},{cy:.1f} '
-                f'L{cx:.1f},{cy + r:.1f} L{cx - r:.1f},{cy:.1f}Z"{model_tip(name, scores)}/>'
-            )
-        else:
-            label = short if narrow else f"{name} · {size(scores['parameters'])}"
-            parts.append(
-                f'<circle class="model{ours}" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
-                f"{model_tip(name, scores)}/>"
-            )
-        labels.append(
-            f'<text class="rlabel{ours}" {place(cx, cy, r, label, taken, frame)}>'
-            f"{esc(label)}</text>"
+        ours = " ours" * (name in OURS)
+        label = scores.get("label", f"{name} · {size(scores['parameters'])}")
+        parts.append(
+            f'<circle class="model{ours}" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
+            f"{model_tip(name, scores)}/>"
         )
+        if label:
+            label = scores.get("short", name) if narrow else label
+            labels.append(
+                f'<text class="rlabel{ours}" {place(cx, cy, r, label, taken, frame)}>'
+                f"{esc(label)}</text>"
+            )
     middle = top + (height - top - bottom) / 2
     parts.append(
         f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 8}" '
