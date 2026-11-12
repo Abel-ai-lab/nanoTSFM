@@ -243,7 +243,7 @@ function show(point) {
   tip.classList.toggle("linked", Boolean(point.dataset.link));
   if (point.dataset.link) {
     const report = Object.assign(document.createElement("a"), { href: point.dataset.link });
-    report.textContent = "Read the report";
+    report.textContent = point.dataset.linkText || "Read the report";
     tip.append("\\n", report);
   }
   const box = point.getBoundingClientRect(), wide = tip.offsetWidth, tall = tip.offsetHeight;
@@ -256,12 +256,17 @@ function show(point) {
   tip.style.left = left + "px";
   tip.style.top = Math.max(8, Math.min(innerHeight - tall - 8, top)) + "px";
 }
-let closing = null;
+let closing = null, lastOn = 0;
 function leave() {
   // Give the pointer time to reach a linked tooltip before it closes.
   clearTimeout(closing);
   if (shown?.dataset.link) closing = setTimeout(() => show(null), 400);
   else show(null);
+}
+function travelling(event) {
+  // For a moment after the pointer leaves a point whose tooltip has a link.
+  const recent = event.timeStamp - lastOn < 600;
+  return Boolean(shown?.dataset.link) && event.type === "pointermove" && recent;
 }
 function nearest(event) {
   let best = null, reach = event.pointerType === "touch" ? 24 : 10;
@@ -272,8 +277,16 @@ function nearest(event) {
     const away = Math.hypot(x, box.top + box.height / 2 - event.clientY) - box.width / 2;
     if (away < reach) [best, reach] = [point, away];
   }
-  if (best) {
+  if (best && best === shown) {
     clearTimeout(closing);
+    lastOn = event.timeStamp;
+  } else if (travelling(event)) {
+    // On the way to a linked tooltip the pointer may cross a neighbouring point: for a moment
+    // after leaving the linked point, a neighbour does not take the tooltip.
+    leave();
+  } else if (best) {
+    clearTimeout(closing);
+    lastOn = event.timeStamp;
     show(best);
   } else if (shown) leave();
 }
@@ -397,8 +410,9 @@ def tips(standalone):
             f"{size(scores['parameters'])} parameters",
         )
         if name in OURS:  # a model that grew from this baseline links to its repository
-            link = "" if standalone else f' data-link="{SIMONS}"'
-            return link + tip(name, *lines, "Built from this baseline with automated research")
+            link = f' data-link="{SIMONS}" data-link-text="Open Simons on GitHub"'
+            note = "Built from this baseline with automated research"
+            return ("" if standalone else link) + tip(name, *lines, note)
         return tip(name, *lines)
 
     return record, model
