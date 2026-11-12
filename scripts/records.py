@@ -39,22 +39,13 @@ STEPS = {
     "YingLong-50m": {"mase": 0.822, "crps": 0.567, "parameters": 36_264_718},
 }
 # Simons, Abel AI Lab's open time series foundation models, grew from this repository's baseline
-# through automated research (SIMONS). The overall plot draws its four sizes in teal, joined by a
-# line, smallest first, with one label for the family (`label`; an empty one draws none). Their
-# scores are those of the GIFT-Eval submission (gift-eval pull 251), from the benchmark's own
-# scoring code; the parameter counts are the safetensors totals on their Hugging Face pages.
+# through automated research (SIMONS). The overall plot draws its largest model in teal; the three
+# smaller sizes score close to it and would cover it and TimesFM-3. Its scores are those of the
+# GIFT-Eval submission (gift-eval pull 251), from the benchmark's own scoring code; its parameter
+# count is the safetensors total on its Hugging Face page.
 SIMONS = "https://github.com/Abel-ai-lab/Simons"
 OURS = {
-    "Simons-25M": {"mase": 0.686, "crps": 0.468, "parameters": 25_121_568, "label": ""},
-    "Simons-60M": {"mase": 0.681, "crps": 0.465, "parameters": 60_319_008, "label": ""},
-    "Simons-178M": {"mase": 0.675, "crps": 0.461, "parameters": 177_746_208, "label": ""},
-    "Simons-297M": {
-        "mase": 0.673,
-        "crps": 0.457,
-        "parameters": 297_230_368,
-        "label": "Simons · 25M to 297M",
-        "short": "Simons",
-    },
+    "Simons-297M": {"mase": 0.673, "crps": 0.457, "parameters": 297_230_368},
 }
 # (text, link, Simple Icons logo and its color)
 LINKS = [
@@ -158,7 +149,6 @@ svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-s
 svg .run {{ fill: var(--run); }}
 svg .model {{ fill: var(--milestone); stroke: var(--paper); stroke-width: 1.5; }}
 svg .model.ours, svg .rlabel.ours {{ fill: var(--ours); }}
-svg .family {{ fill: none; stroke: var(--ours); stroke-width: 2; }}
 svg .key {{ fill: var(--paper); stroke: var(--milestone); }}
 svg .star {{ fill: var(--accent); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
@@ -227,7 +217,6 @@ STANDALONE = """<style>
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
 .model { fill: #8C99A6; stroke: #FFFFFF; stroke-width: 1.5; }
 .model.ours, .rlabel.ours { fill: #0A7F85; }
-.family { fill: none; stroke: #0A7F85; stroke-width: 2; }
 .key { fill: #FFFFFF; stroke: #8C99A6; } .star { fill: #D9622B; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
@@ -725,21 +714,17 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         labels.append(
             f'<text class="change" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
-    family = " L".join(f"{cx:.1f},{cy:.1f}" for cx, cy, _, name, _ in models if name in OURS)
-    parts.append(f'<path class="family" d="M{family}"/>')
     for cx, cy, r, name, scores in models:
         ours = " ours" * (name in OURS)
-        label = scores.get("label", f"{name} · {size(scores['parameters'])}")
+        label = scores.get("short", name) if narrow else f"{name} · {size(scores['parameters'])}"
         parts.append(
             f'<circle class="model{ours}" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
             f"{model_tip(name, scores)}/>"
         )
-        if label:
-            label = scores.get("short", name) if narrow else label
-            labels.append(
-                f'<text class="rlabel{ours}" {place(cx, cy, r, label, taken, frame)}>'
-                f"{esc(label)}</text>"
-            )
+        labels.append(
+            f'<text class="rlabel{ours}" {place(cx, cy, r, label, taken, frame)}>'
+            f"{esc(label)}</text>"
+        )
     middle = top + (height - top - bottom) / 2
     parts.append(
         f'<text class="sub" x="{left + (width - left - right) / 2:.1f}" y="{height - 8}" '
