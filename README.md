@@ -5,6 +5,9 @@
 [![Python 3.12–3.14][python-badge]][python]
 [![License: MIT][license-badge]](LICENSE)
 
+> **New:** [Simons][simons], our open time series foundation models, grew from this baseline.
+> Read [Introducing Simons][simons-post].
+
 **Hill-climbing GIFT-Eval with one A100 and one hour.**
 
 nanoTSFM is an open challenge built on a 3.3M-parameter simplified [Toto 2.0][toto2]. It trains on
@@ -49,10 +52,10 @@ The [rules](docs/rules.md) have the details.
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
-Records are orange, published models are gray, a point's size shows its parameter count, and the
-star marks the best corner. A record is the $\text{mean} \pm \text{sd}$ of three verified
-runs and is decided on CRPS. See the [record page][site] for every run and [submission](docs/submission.md) for
-how to set a record.
+Records are orange, published models are gray, [Simons][simons] is teal, a point's size shows its
+parameter count, and the star marks the best corner. A record is the $\text{mean} \pm \text{sd}$ of
+three verified runs and is decided on CRPS. See the [record page][site] for every run and
+[submission](docs/submission.md) for how to set a record.
 
 ## Data
 
@@ -147,3 +150,5 @@ The model is based on [Toto 2.0][toto2], and the data and benchmark come from
 [gep]: https://huggingface.co/datasets/Salesforce/GiftEvalPretrain
 [toto2]: https://arxiv.org/abs/2605.20119
 [gift-paper]: https://arxiv.org/abs/2410.10393
+[simons]: https://github.com/Abel-ai-lab/Simons
+[simons-post]: https://abel.ai/research/introducing-simons/

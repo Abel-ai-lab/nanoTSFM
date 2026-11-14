@@ -17,19 +17,17 @@ REPO = "https://github.com/Abel-ai-lab/nanoTSFM"
 # GIFT-Eval leaderboard at gift-eval commit 8e6da59: models without test leakage. Scoring stays at
 # 9a014e9 (scripts/score.py); Seasonal Naive's results are the same file at both commits. Parameter
 # counts are the safetensors totals on each model's Hugging Face page; Timestral's are approximate,
-# from its model cards. The leaderboard ranks entries by their average rank over tasks; its first,
-# STRIDE w/ Synapse, is an agentic system with no published size, which the figures draw as a
-# diamond.
+# from its model cards. The leaderboard ranks entries by their average rank over tasks; its first
+# entry is an agentic system, which the figures leave out.
 MILESTONES = {
-    "STRIDE w/ Synapse": {"mase": 0.625, "crps": 0.423, "parameters": None, "short": "STRIDE"},
     "TimesFM-3": {"mase": 0.667, "crps": 0.456, "parameters": 330_710_976},
     "Toto-2.0-4m": {"mase": 0.757, "crps": 0.524, "parameters": 4_144_448},
     "TinyCast": {"mase": 0.774, "crps": 0.545, "parameters": 146_505},
     "Moirai-small": {"mase": 0.946, "crps": 0.650, "parameters": 13_827_528},
 }
 # More models from the same leaderboard, from well-known labs, drawn in the overall plot only: they
-# fill its gaps, so the climb from the baseline goes in even steps. Mistral AI's Timestral-209M is
-# second on the leaderboard, after STRIDE w/ Synapse; Timestral-5M is the family's smallest size.
+# fill its gaps on the climb from the baseline. Mistral AI's Timestral-209M is the leaderboard's
+# best model.
 STEPS = {
     "Timestral-209M": {
         "mase": 0.658,
@@ -37,11 +35,17 @@ STEPS = {
         "parameters": 209_000_000,
         "short": "Timestral",
     },
-    "Timestral-5M": {"mase": 0.705, "crps": 0.479, "parameters": 5_210_000},
     "Chronos-2": {"mase": 0.698, "crps": 0.485, "parameters": 119_477_664},
-    "Moirai-2.0-small": {"mase": 0.728, "crps": 0.516, "parameters": 11_387_208},
     "YingLong-50m": {"mase": 0.822, "crps": 0.567, "parameters": 36_264_718},
-    "YingLong-6m": {"mase": 0.880, "crps": 0.609, "parameters": 7_319_566},
+}
+# Simons, Abel AI Lab's open time series foundation models, grew from this repository's baseline
+# through automated research (SIMONS). The overall plot draws its largest model in teal; the three
+# smaller sizes score close to it and would cover it and TimesFM-3. Its scores are those of the
+# GIFT-Eval submission (gift-eval pull 251), from the benchmark's own scoring code; its parameter
+# count is the safetensors total on its Hugging Face page.
+SIMONS = "https://github.com/Abel-ai-lab/Simons"
+OURS = {
+    "Simons-297M": {"mase": 0.673, "crps": 0.457, "parameters": 297_230_368},
 }
 # (text, link, Simple Icons logo and its color)
 LINKS = [
@@ -95,18 +99,18 @@ MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1
   crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.spec'),
   {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false})"></script>"""
 RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
-FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard; the
-diamond is STRIDE w/ Synapse, ranked first on the leaderboard, an agentic system. In the two
-panels by metric, each small gray dot is one verified run and the orange line is the record, the
-mean of its runs. Records are decided on CRPS."""
+FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
+the two panels by metric, each small gray dot is one verified run and the orange line is the
+record, the mean of its runs. Records are decided on CRPS."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
 )
 TOKENS = """--paper: #FFFFFF; --ink: #14202B; --text: #3E4A56; --muted: #6B7682; --rule: #E1E4E0;
-  --accent: #D9622B; --milestone: #8C99A6; --run: #A9B1BA; --mine: #FBE6DA;"""
+  --accent: #D9622B; --milestone: #8C99A6; --run: #A9B1BA; --mine: #FBE6DA; --ours: #0A7F85;"""
 DARK = """--paper: #10181F; --ink: #F4F5F1; --text: #C9D3DC; --muted: #8C99A6; --rule: #2A3845;
-  --accent: #F08A55; --milestone: #6B7682; --run: #56626E; --mine: #3A2419; color-scheme: dark;"""
+  --accent: #F08A55; --milestone: #6B7682; --run: #56626E; --mine: #3A2419; --ours: #4FC3C8;
+  color-scheme: dark;"""
 STYLE = f"""
 :root {{ {TOKENS} }}
 @media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ {DARK} }} }}
@@ -144,6 +148,7 @@ svg .ref {{ stroke: var(--milestone); stroke-dasharray: 5 5; }}
 svg .rlabel {{ fill: var(--milestone); font: 12px "IBM Plex Sans", Arial, sans-serif; }}
 svg .run {{ fill: var(--run); }}
 svg .model {{ fill: var(--milestone); stroke: var(--paper); stroke-width: 1.5; }}
+svg .model.ours, svg .rlabel.ours {{ fill: var(--ours); }}
 svg .key {{ fill: var(--paper); stroke: var(--milestone); }}
 svg .star {{ fill: var(--accent); }}
 svg .best {{ fill: none; stroke: var(--accent); stroke-width: 2.5; }}
@@ -211,6 +216,7 @@ STANDALONE = """<style>
 .grid { stroke: #E1E4E0; } .ref { stroke: #8C99A6; stroke-dasharray: 5 5; }
 .rlabel { fill: #8C99A6; font: 12px Arial, sans-serif; } .run { fill: #A9B1BA; }
 .model { fill: #8C99A6; stroke: #FFFFFF; stroke-width: 1.5; }
+.model.ours, .rlabel.ours { fill: #0A7F85; }
 .key { fill: #FFFFFF; stroke: #8C99A6; } .star { fill: #D9622B; }
 .best { fill: none; stroke: #D9622B; stroke-width: 2.5; }
 .rec { fill: #D9622B; stroke: #FFFFFF; stroke-width: 1.5; }
@@ -237,7 +243,7 @@ function show(point) {
   tip.classList.toggle("linked", Boolean(point.dataset.link));
   if (point.dataset.link) {
     const report = Object.assign(document.createElement("a"), { href: point.dataset.link });
-    report.textContent = "Read the report";
+    report.textContent = point.dataset.linkText || "Read the report";
     tip.append("\\n", report);
   }
   const box = point.getBoundingClientRect(), wide = tip.offsetWidth, tall = tip.offsetHeight;
@@ -250,12 +256,17 @@ function show(point) {
   tip.style.left = left + "px";
   tip.style.top = Math.max(8, Math.min(innerHeight - tall - 8, top)) + "px";
 }
-let closing = null;
+let closing = null, lastOn = 0;
 function leave() {
   // Give the pointer time to reach a linked tooltip before it closes.
   clearTimeout(closing);
   if (shown?.dataset.link) closing = setTimeout(() => show(null), 400);
   else show(null);
+}
+function travelling(event) {
+  // For a moment after the pointer leaves a point whose tooltip has a link.
+  const recent = event.timeStamp - lastOn < 600;
+  return Boolean(shown?.dataset.link) && event.type === "pointermove" && recent;
 }
 function nearest(event) {
   let best = null, reach = event.pointerType === "touch" ? 24 : 10;
@@ -266,8 +277,16 @@ function nearest(event) {
     const away = Math.hypot(x, box.top + box.height / 2 - event.clientY) - box.width / 2;
     if (away < reach) [best, reach] = [point, away];
   }
-  if (best) {
+  if (best && best === shown) {
     clearTimeout(closing);
+    lastOn = event.timeStamp;
+  } else if (travelling(event)) {
+    // On the way to a linked tooltip the pointer may cross a neighbouring point: for a moment
+    // after leaving the linked point, a neighbour does not take the tooltip.
+    leave();
+  } else if (best) {
+    clearTimeout(closing);
+    lastOn = event.timeStamp;
     show(best);
   } else if (shown) leave();
 }
@@ -385,10 +404,16 @@ def tips(standalone):
         )
 
     def model(name, scores):
-        lines = (f"MASE {scores['mase']:.3f}", f"CRPS {scores['crps']:.3f}")
-        if scores["parameters"] is None:
-            return tip(name, *lines, "Ranked first on the leaderboard; an agentic system")
-        return tip(name, *lines, f"{size(scores['parameters'])} parameters")
+        lines = (
+            f"MASE {scores['mase']:.3f}",
+            f"CRPS {scores['crps']:.3f}",
+            f"{size(scores['parameters'])} parameters",
+        )
+        if name in OURS:  # a model that grew from this baseline links to its repository
+            link = f' data-link="{SIMONS}" data-link-text="Open Simons on GitHub"'
+            note = "Built from this baseline with automated research"
+            return ("" if standalone else link) + tip(name, *lines, note)
+        return tip(name, *lines)
 
     return record, model
 
@@ -583,7 +608,7 @@ def place(cx, cy, r, text, taken, frame) -> str:
         )
 
     near, up, down = 0.7 * r + 3, cy - 0.7 * r - 2 - tall, cy + 0.7 * r + 2
-    sides = [  # right of the point, then left, below and above, then the four corners
+    sides = [  # right of the point, then left, below and above, then the corners
         (cx + r + 5, cy - tall / 2, "start"),
         (cx - r - 5 - wide, cy - tall / 2, "end"),
         (cx - wide / 2, cy + r + 4, "middle"),
@@ -592,6 +617,11 @@ def place(cx, cy, r, text, taken, frame) -> str:
         (cx + near, down, "start"),
         (cx - near - wide, up, "end"),
         (cx - near - wide, down, "end"),
+        # in a crowd of points: clear of the point's whole height, below it and then above
+        (cx + near, cy + r + 4, "start"),
+        (cx - near - wide, cy + r + 4, "end"),
+        (cx + near, cy - r - 4 - tall, "start"),
+        (cx - near - wide, cy - r - 4 - tall, "end"),
     ]
     x, y, anchor = next(filter(free, sides), sides[0])
     taken.append((x, y, x + wide, y + tall))
@@ -610,7 +640,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         width, height, left, right, top, bottom = 400, 414, 46, 14, 62, 50
     record_tip, model_tip = tips(standalone)
     points = [(r["gift_eval"]["mase"], r["gift_eval"]["crps"]) for _, _, r in entries]
-    published = MILESTONES | STEPS
+    published = MILESTONES | STEPS | OURS
     points += [(scores["mase"], scores["crps"]) for scores in published.values()]
     # Room on the better side, so the star stands apart from even the best model.
     spans = [max(p[axis] for p in points) - min(p[axis] for p in points) for axis in (0, 1)]
@@ -657,7 +687,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
         )
         start += 2 * r + 5 + 7 * len(label) + 18
     models = [
-        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"] or 1e7), name, scores)
+        (x(scores["mase"]), y(scores["crps"]), radius(scores["parameters"]), name, scores)
         for name, scores in published.items()
     ]
     records = [
@@ -699,21 +729,15 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
             f'<text class="change" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
         )
     for cx, cy, r, name, scores in models:
-        short = scores.get("short", name)
-        if scores["parameters"] is None:  # an agentic system: a diamond, with no size
-            label = short if narrow else f"{name} · agentic"
-            parts.append(
-                f'<path class="model" d="M{cx:.1f},{cy - r:.1f} L{cx + r:.1f},{cy:.1f} '
-                f'L{cx:.1f},{cy + r:.1f} L{cx - r:.1f},{cy:.1f}Z"{model_tip(name, scores)}/>'
-            )
-        else:
-            label = short if narrow else f"{name} · {size(scores['parameters'])}"
-            parts.append(
-                f'<circle class="model" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
-                f"{model_tip(name, scores)}/>"
-            )
+        ours = " ours" * (name in OURS)
+        label = scores.get("short", name) if narrow else f"{name} · {size(scores['parameters'])}"
+        parts.append(
+            f'<circle class="model{ours}" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
+            f"{model_tip(name, scores)}/>"
+        )
         labels.append(
-            f'<text class="rlabel" {place(cx, cy, r, label, taken, frame)}>{esc(label)}</text>'
+            f'<text class="rlabel{ours}" {place(cx, cy, r, label, taken, frame)}>'
+            f"{esc(label)}</text>"
         )
     middle = top + (height - top - bottom) / 2
     parts.append(
