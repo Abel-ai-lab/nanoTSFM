@@ -45,7 +45,7 @@ def load_config(path: Path):
         "checkpoint_every",
         "source_power",
     }
-    optional = {"freq_power": 1}
+    optional = {"freq_power": 1, "mask_span_max": MASK_SPAN_MAX}
     if not required <= set(settings) <= required | set(optional):
         raise ValueError(f"Training fields must be {sorted(required)}, plus {sorted(optional)}")
     for key, default in optional.items():
@@ -64,6 +64,9 @@ def load_config(path: Path):
     power = settings["freq_power"]
     if isinstance(power, bool) or not isinstance(power, (int, float)) or not 0 <= power <= 1:
         raise ValueError("freq_power must be a number from 0 to 1")
+    span = settings["mask_span_max"]
+    if isinstance(span, bool) or not isinstance(span, int) or not 1 <= span <= 32:
+        raise ValueError("mask_span_max must be an integer from 1 to 32")
     if not isinstance(settings["data"], str) or not settings["data"]:
         raise ValueError("data must name a dataset config or a local parquet folder")
     return model, settings
@@ -122,20 +125,22 @@ def validate(model, batches, device) -> float | None:
     return total / count
 
 
-def contiguous_patch_mask(shape, device) -> torch.Tensor:
+def contiguous_patch_mask(shape, device, span_max: int = MASK_SPAN_MAX) -> torch.Tensor:
     patches = shape[-1]
-    span = torch.randint(1, MASK_SPAN_MAX + 1, (*shape[:-1], 1), device=device)
+    span = torch.randint(1, span_max + 1, (*shape[:-1], 1), device=device)
     rate = torch.rand(*shape[:-1], 1, device=device) * MASK_RATE_MAX
     starts = torch.rand(shape, device=device) < rate / span
     position = torch.arange(patches, device=device)
-    latest = torch.where(starts, position, -MASK_SPAN_MAX).cummax(dim=-1).values
+    latest = torch.where(starts, position, -span_max).cummax(dim=-1).values
     return position - latest < span
 
 
-def next_patch_loss(model, sequence: torch.Tensor, series_ids: torch.Tensor) -> torch.Tensor:
+def next_patch_loss(
+    model, sequence: torch.Tensor, series_ids: torch.Tensor, span_max: int = MASK_SPAN_MAX
+) -> torch.Tensor:
     patch = model.config.patch_length
     batch, variates, length = sequence.shape
-    hidden = contiguous_patch_mask((batch, variates, length // patch), sequence.device)
+    hidden = contiguous_patch_mask((batch, variates, length // patch), sequence.device, span_max)
     observed = torch.isfinite(sequence).unflatten(-1, (-1, patch)).any(-1)
     hidden &= observed.cumsum(-1) > MIN_CONTEXT_PATCHES
     seen = (observed & ~hidden).cummax(-1).values
@@ -307,7 +312,7 @@ def train(
                     group["lr"] = learning_rate(step, settings["steps"], settings["learning_rate"])
                 optimizer.zero_grad(set_to_none=True)
                 with autocast:
-                    loss = next_patch_loss(model, sequence, series_ids)
+                    loss = next_patch_loss(model, sequence, series_ids, settings["mask_span_max"])
                 loss.backward()
                 norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 nonfinite |= ~torch.isfinite(norm)

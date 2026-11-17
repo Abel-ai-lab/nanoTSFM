@@ -2,7 +2,8 @@
 # Train one run on a Sol A100, then score it on GEP-Test and GIFT-Eval.
 # Usage: sbatch sol/run.sbatch <run-name> <config> <seed>
 #SBATCH --job-name=nanotsfm
-#SBATCH --partition=public
+#SBATCH --account=class_cse47267488fall2026
+#SBATCH --partition=htc
 #SBATCH --qos=public
 #SBATCH --gres=gpu:a100:1
 #SBATCH --cpus-per-task=8
