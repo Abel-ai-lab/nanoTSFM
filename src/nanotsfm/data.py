@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -94,22 +95,69 @@ def toy(split: str, seed: int = 7, series: int = 24, length: int = 512):
     return HFDataset.from_dict(rows)
 
 
+FREQUENCY_GROUPS = ("second", "minute", "hour", "day", "week", "month+")
+
+
+def frequency_group(freq: str) -> str:
+    """Bucket a pandas frequency string, such as '5min', '10T', 'H', 'W-SUN' or 'QS-DEC'."""
+    unit = re.sub(r"^[\d\s]+", "", str(freq)).split("-")[0]
+    if unit in ("S", "s", "L", "ms", "U", "us", "N", "ns"):
+        return "second"
+    if unit in ("T", "min"):
+        return "minute"
+    if unit in ("H", "h", "BH", "bh"):
+        return "hour"
+    if unit in ("D", "B", "C"):
+        return "day"
+    if unit == "W":
+        return "week"
+    if unit[:1] in ("M", "Q", "A", "Y") or unit[:2] in ("BM", "BQ", "BA", "BY"):
+        return "month+"
+    raise ValueError(f"Unknown frequency {freq!r}")
+
+
 class Windows(Dataset):
-    def __init__(self, dataset, context: int, horizon: int, count: int, seed: int, power=0.0):
+    def __init__(
+        self,
+        dataset,
+        context: int,
+        horizon: int,
+        count: int,
+        seed: int,
+        power=0.0,
+        freq_power=1.0,
+    ):
         """Draw a source with weight (its series count) ** power, then a series from it.
 
-        Power 0 weights sources equally, 1 weights every series equally.
+        Power 0 weights sources equally, 1 weights every series equally, and above 1 favors
+        large sources further. freq_power then rescales each frequency group (second, minute,
+        hour, day, week, month+) so that its total share W becomes proportional to
+        W ** freq_power: 1 leaves the weights unchanged, 0 gives every group the same share.
         """
         self.context, self.horizon, self.count, self.seed = context, horizon, count, seed
-        sources = {}
-        for source, values in zip(dataset["source"], arrays(dataset), strict=True):
+        sources, freqs = {}, {}
+        frequencies = dataset["freq"] if freq_power != 1 else [None] * len(dataset)
+        for source, freq, values in zip(
+            dataset["source"], frequencies, arrays(dataset), strict=True
+        ):
             if values.shape[1] > horizon:
                 sources.setdefault(source, []).append(values)
+                freqs.setdefault(source, freq)
         self.sources = list(sources.values())
         if not self.sources or min(context, horizon, count) <= 0:
             raise ValueError("No series longer than the horizon, or an invalid window/count")
         weights = np.array([len(source) for source in self.sources], dtype=float) ** power
-        self.weights = weights / weights.sum() if power else None
+        weights = weights / weights.sum()
+        self.groups = None
+        if freq_power != 1:
+            group = np.array([frequency_group(freqs[name]) for name in sources])
+            for name in np.unique(group):
+                total = weights[group == name].sum()
+                weights[group == name] *= total**freq_power / total
+            weights = weights / weights.sum()
+            self.groups = {str(n): float(weights[group == n].sum()) for n in np.unique(group)}
+        # Power 0 with freq_power 1 keeps the baseline's uniform draw and its random stream.
+        self.weights = weights if power or freq_power != 1 else None
 
     def __len__(self):
         return self.count
