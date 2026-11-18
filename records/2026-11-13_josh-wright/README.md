@@ -19,9 +19,9 @@ The ablation has two parts. Full GIFT-Eval grades on 3 seeds cover the ensemble,
 
 ## Method
 
-**Model.** Each member is the record's patch transformer at width 384, 6 layers and 8 heads, 12,717,216 parameters. Five members is 63,586,080. Context is 1,024 points, patches are 32 and the forecast block is 512. Each member trains 8,000 steps at batch 256 and learning rate 0.002, so 40,000 steps in all. Their quantiles are averaged. The config is `configs/ens5-13m-gate.yaml` at commit eeab17f on branch `submit/13m-ens5-gate`. The diff from upstream touches `data.py`, `model.py`, `train.py` and the config.
+**Model.** Each member is the record's patch transformer at width 384, 6 layers and 8 heads, 12,717,216 parameters. Five members is 63,586,080. Each member reads 1,024 points of context, patches are 32 and the forecast block is 512. Each member trains 8,000 steps at batch 256 and learning rate 0.002, so 40,000 steps in all. Their quantiles are averaged. The config is `configs/ens5-13m-gate.yaml` on branch `submit/13m-a100`. Its `context_length` is 4,096, the history the forecast reads. Training divides it by the longest polyphase stride, 4, so each member trains at 1,024 (`network_config` in `model.py`). The diff from upstream touches `data.py`, `model.py`, `train.py` and the config.
 
-**Polyphase heads.** At forecast time the model also forecasts every 2nd and every 4th point of the history at each phase. It weaves those forecasts back together and blends them in at weight 0.25. With `polyphase_forecast_period` a series with a clear cycle also gets a stride picked from its own period, so the cycle lands near 24 points. The stride 4 pass reads up to 4,096 points of history, so the model sees more than its 1,024 point context. Every forecast still comes from this model.
+**Polyphase heads.** At forecast time the model also forecasts every 2nd and every 4th point of the history at each phase. It weaves those forecasts back together and blends them in at weight 0.25. With `polyphase_forecast_period` a series with a clear cycle also gets a stride picked from its own period, so the cycle lands near 24 points. The stride 4 pass reads up to 4,096 points of history, so the forecast sees more than each member's 1,024 point context. Every forecast still comes from this model.
 
 **Phase tokens.** Up to 4 periods are found from one FFT of the context with Fisher's test, as in TinyCast. Each patch token, future ones included, gets the sine and cosine of its place in each cycle. Only the period goes in, no computed forecast or seasonal value.
 
@@ -63,7 +63,7 @@ How much this inflates the score can not be measured from what I have. Seeds 7, 
 
 ## Results
 
-CRPS and MASE are relative to Seasonal Naive, lower is better. GIFT-Eval is mean ± sd over seeds 7, 1 and 2. GEP columns are seed 7. Rows marked dev ran on my RTX 5070 Ti at lab commits with a raised time cap and are not submitted.
+CRPS and MASE are relative to Seasonal Naive, lower is better. GIFT-Eval is mean ± sd over seeds 7, 1 and 2. GEP columns are seed 7. Rows marked dev ran on my RTX 5070 Ti at lab commits with a raised time cap and are not submitted. Rows on one or two seeds, and the single-seed proxy rows below, break the three-seed rule for comparisons; read them as hints.
 
 | Model | GIFT-Eval CRPS | MASE | GEP-Val | GEP-Test | Train seconds | Steps |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -74,10 +74,10 @@ CRPS and MASE are relative to Seasonal Naive, lower is better. GIFT-Eval is mean
 | + GEP-L, power 0.5, dev | 0.5692 ± 0.0018 | 0.806 | 0.598 | 0.597 | not logged | 25,000 |
 | + 6 layers, dev | 0.5641 ± 0.0018 | 0.801 | 0.584 | 0.580 | 1,216-2,030 | 25,000 |
 | This model, dev, commit 9d0a9ecb | 0.5259 ± 0.0006 | 0.760 | 0.570 | 0.561 | 1,141-1,243 | 40,000 |
-| Same, gate off, dev, seeds 7 and 1 | 0.5369 | 0.782 | | | same checkpoints | 40,000 |
+| Same, gate off, dev, seeds 7 and 1 only | 0.5369 | 0.782 | | | same checkpoints | 40,000 |
 | **This submission, final runs** | **0.5259 ± 0.0006** | | 0.570 | 0.561 | 1,231, 1,170, 1,196 | 40,000 |
 
-The final runs scored 0.5257 on seed 7, 0.5255 on seed 1 and 0.5266 on seed 2. Seed 7 at the submission commit with the 3,600 second cap matched the dev run of seed 7 to nine decimal places (0.525699617). The dev runs scored 0.5257, 0.5255 and 0.5266. Their mean is 0.1057 below the record, and the record rule needs 0.013. Fourteen members instead of five scored 0.5246 on seed 7 only, trained for 3,266 seconds and took 9,122 seconds to forecast. I kept five.
+The final runs scored 0.5257 on seed 7, 0.5255 on seed 1 and 0.5266 on seed 2. Seed 7 at the submission commit with the 3,600 second cap matched the dev run of seed 7 to nine decimal places (0.525699617). The dev runs scored 0.5257, 0.5255 and 0.5266. Their mean is 0.1057 below the record, and the record rule needs 0.013. Fourteen members instead of five scored 0.5246 on seed 7 only, so take that as a hint, not a comparison. They trained for 3,266 seconds and took 9,122 seconds to forecast. I kept five.
 
 The jump from 0.5641 to 0.5259 bundles augmentation, polyphase, the channel limit, phase tokens, width 384, the higher learning rate and 8,000 steps. None of those has its own full GIFT-Eval grade. The proxy chain below is how they were chosen. Each row is paired by seed against the row above it, on held-out sources. Negative is better.
 
@@ -105,7 +105,49 @@ The augmentation ablation, each against full augmentation, 3 seeds each.
 
 Where the two disagree. The gate is the clear case. It is worth -0.011 on GIFT-Eval with this model and nothing on held-out sources or on GEP-Val and GEP-Test. On the first ensemble it took GIFT-Eval from 0.6152 to 0.5737 and left GEP-Val at 0.593. GEP-L also took GIFT-Eval down while GEP-Val and GEP-Test got a little worse. Everything chosen on held-out sources moved GIFT-Eval, the diagnostics and the proxy the same way. This model has the best GEP-Val (0.570) and GEP-Test (0.561) of any model I graded.
 
+**What did not work.**
+
+Full GIFT-Eval grades, seeds 7, 1 and 2, against the local baseline at 0.6297 ± 0.0043:
+
+| Idea | GIFT-Eval CRPS | Why I think it failed |
+| --- | --- | --- |
+| Toto-style masked spans, scoring only hidden patches | 0.6675 ± 0.0053 | Trains a different task than the rollout forecast |
+| Context 2,048 | 0.6426 ± 0.0018 | Fewer windows per series; most target series are short |
+| "Sleep" cycles: shrink weights 0.8 and add noise every 5,000 steps | 0.6429 ± 0.0011 | Each cycle undid more than it regularized |
+| Weight blend of a 5,000-step model with an earlier one | 0.6418 ± 0.0058 | Blending weights of one run is not ensembling forecasts |
+| Frequency-balanced GEP-L, 10,000 steps | 0.6333 ± 0.0040 | Balancing beat nothing; power 0.5 did better (0.6212) |
+| Span-16 masking | 0.6329 ± 0.0077 | No change |
+| EMA of the weights | 0.6277 ± 0.0011 | Within noise |
+
+On held-out sources, 3 seeds paired against the base named, positive is worse:
+
+| Idea | Base | Deltas | Mean |
+| --- | --- | --- | ---: |
+| A learned token for the window's stride | channel limit + phase tokens + period strides | +0.0182, +0.0177, +0.0140 | +0.0166 |
+| Draw thin rates more often | augmentation | +0.0105, +0.0156, +0.0175 | +0.0145 |
+| More coarse downsampling | augmentation | +0.0053, +0.0120, +0.0226 | +0.0133 |
+| Half the augmentation chances | augmentation | +0.0052, +0.0139, +0.0023 | +0.0072 |
+| 2,000 steps instead of 5,000 | augmentation | +0.0055, +0.0089, +0.0086 | +0.0077 |
+| Training stride 3 only | polyphase | +0.0097, +0.0056, +0.0012 | +0.0055 |
+| Training on short prefixes | GEP-L | +0.0064, +0.0032, -0.0007 | +0.0029 |
+| No variate block | channel limit + phase tokens + period strides | -0.0015, +0.0055, +0.0034 | +0.0024 |
+| TinyCast's phase-binned readout | augmentation | -0.0035, +0.0066, +0.0027 | +0.0019 |
+| A learned router over experts | GEP-L | +0.0108, +0.0014, -0.0088 | +0.0011 |
+| Gate backtest at the task's horizon (the flaw below) | gate | -0.0000, -0.0001, +0.0004 | +0.0001 |
+
+The pattern: ideas that showed the model more varied real data paid, and ideas that changed what it is asked to predict, or how it is built, mostly did not.
+
 ## Discussion
+
+**Biggest gains.**
+
+Ranked by size, each on the evidence that chose it.
+
+1. **The backtest gate, -0.0415 on GIFT-Eval** (ensemble of five, 0.6152 to 0.5737, same checkpoints). The largest single step, and the least trusted: nothing on held-out sources or on GEP-Val. It helps only strongly seasonal series, where removing the mean cycle leaves the network an easier, flatter series. On this model it is worth -0.011 (0.5369 without it).
+2. **Augmentation, -0.0390 on held-out sources** (3 seeds). Sign flip carries the most (+0.0208 without it), then downsampling (+0.0228 without it) and time reversal (+0.0101). The corpus has many long, trending, one-directional series. Flips and resampling show the model rises and falls, and slower rates, that Pretrain has in one direction or at one rate only.
+3. **Five members, -0.0145 on GIFT-Eval** (0.6297 to 0.6152). Quantile averaging cuts each member's own error. It stopped paying at five: fourteen members gained 0.0011 on one seed.
+4. **Polyphase views and heads, -0.0148 on held-out sources.** Views alone (0.6267 on GIFT-Eval) did little. The gain came when the forecast also read every 2nd and 4th point. That gives each member four times the history at the same cost, and slow cycles become short ones.
+5. **Bigger members and longer training, -0.0111 on held-out sources.** Width 384, 6 layers, 8,000 steps, at learning rate 0.002.
 
 The results support the main idea. Augmentation was the largest single step on held-out sources, and polyphase, size and pooling each added some. Together they took GIFT-Eval from 0.5641 to 0.5259 with the gate held fixed. GEP-Val and GEP-Test moved with it, so this does not look like fitting the corpus.
 
@@ -121,7 +163,7 @@ Limitations.
 - Sign flip and time reversal need a maintainer ruling. Without them I expect about +0.03.
 - The leak audit's poison test ran on an older gated model, not this checkpoint. A CPU check with the final switches found no leak, with forecasts alone and batched differing by about 1e-7.
 - Forecasting takes about an hour on my GPU, much more than the baseline.
-- The gate has a flaw I found after these runs. Its backtest is 1,024 steps long whatever the horizon is. On bizitobs_l2c at 5 minutes that makes it pick the deseasoned forecast for a 48 step task. The first step then jumps away from the last value. In one window the history ended at 44, the forecast said 37, and with the gate off it said 43. I saw this on GIFT-Eval windows, so I am testing the fix on held-out sources before using it. It is not in this submission.
+- The gate has a flaw I found after these runs. Its backtest is 1,024 steps long whatever the horizon is. On bizitobs_l2c at 5 minutes that makes it pick the deseasoned forecast for a 48 step task. The first step then jumps away from the last value. In one window the history ended at 44, the forecast said 37, and with the gate off it said 43. I saw this on GIFT-Eval windows, so I tested the fix on held-out sources: backtesting at the task's horizon scored +0.0001 (3 seeds), so it is not in this submission.
 
 Next I would try more kinds of real data rather than more steps, and a version of the gate that earns its place on held-out sources.
 
@@ -139,7 +181,7 @@ Borrowed work.
 - Polyphase forecasting is close to SparseTSF (2024, arXiv 2405.00946), which forecasts subsequences at one known period and reshapes them back. Li, Petropoulos and Kang (arXiv 2101.00827) forecast sub-seasonal series and combine them. SCINet (arXiv 2106.09305) and LightTS (arXiv 2207.01186) split series into odd and even points. Picking the stride from the period is close to FlowState (arXiv 2508.05287). Random-phase views at strides 2 and 4 in training, blended with interlaced forecasts, are my own combination as far as I found.
 - Removing the season before forecasting is a standard idea. The backtest gate came from reading small model reports.
 
-To reproduce, at commit eeab17f:
+To reproduce, on branch `submit/13m-a100`:
 
 ```shell
 ./run.sh train final-s7 configs/ens5-13m-gate.yaml 7
@@ -148,3 +190,19 @@ To reproduce, at commit eeab17f:
 ./run.sh eval final-s7   # and final-s1, final-s2
 ./run.sh submit 2026-11-13_josh-wright final-s7 final-s1 final-s2
 ```
+
+## References
+
+- Aksu, T. et al. (2024). GIFT-Eval: A Benchmark for General Time Series Forecasting Model Evaluation. arXiv:2410.10393.
+- Khwaja, et al. (2026). Toto 2.0. arXiv:2605.20119.
+- TinyCast (2026). arXiv:2608.15767.
+- TiRex (2025). arXiv:2505.23719.
+- Reverso (2026). arXiv:2602.17634.
+- Timer-S1 (2026). arXiv:2603.04791.
+- Lin, S. et al. (2024). SparseTSF. arXiv:2405.00946.
+- Li, Petropoulos and Kang. Forecasting with sub-seasonal series. arXiv:2101.00827.
+- Liu, M. et al. SCINet. arXiv:2106.09305.
+- Zhang, T. et al. LightTS. arXiv:2207.01186.
+- FlowState (2025). arXiv:2508.05287.
+- Abel AI Lab. nanoTSFM. https://github.com/Abel-ai-lab/nanoTSFM
+- Shu-Wan. Record 2, Weight every series equally. records/ in nanoTSFM.
