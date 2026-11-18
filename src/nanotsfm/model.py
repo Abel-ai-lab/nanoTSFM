@@ -13,6 +13,7 @@ MIN_SCALE = 1e-5
 INFER_CANDIDATES = ("rate2", "rate4", "seasonal", "deseason", "flip")
 COMBINERS = ("mean", "median", "asinh_mean")
 SWITCHES = (
+    "infer_tail_floor",
     "far_tiers",
     "scale_halflife",
     "mask_padded",
@@ -158,6 +159,7 @@ class ModelConfig:
     rate_embedding: tuple = ()  # rising strides from 1, with a token each; see rate_token
     sort_in_training: bool = True  # False scores the head's raw quantiles; forecasts still sort
     head_hidden: int = 0  # hidden size of a residual MLP ahead of the head; 0 is none
+    infer_tail_floor: bool = False  # past one pass, bands stay as wide as a cycle before
 
     @property
     def far_length(self) -> int:
@@ -201,6 +203,8 @@ class ModelConfig:
         clamp = self.forecast_clamp
         if clamp is not None and (type(clamp) not in (int, float) or not 0 < clamp < float("inf")):
             raise ValueError("forecast_clamp must be finite and positive, or None")
+        if type(self.infer_tail_floor) is not bool:
+            raise ValueError("infer_tail_floor must be true or false")
         if self.combiner not in COMBINERS:
             raise ValueError(f"combiner must be one of {COMBINERS}")
         halflife = self.scale_halflife
@@ -1591,6 +1595,27 @@ def backtest_scores(model, history, horizon: int, series_ids, period) -> torch.T
     return loss.sum(-1) / target.isfinite().sum(-1).clamp_min(1)
 
 
+def floor_tail(result: torch.Tensor, cycle: torch.Tensor, first: int) -> torch.Tensor:
+    """result [...,H,9] with its bands past the first model pass held at least as wide as they were
+    at the same phase of the pass's last cycle; `cycle` [...] is each series' whole period, or 1.
+
+    A rollout feeds its own median back, so what it reads past one pass looks surer than any real
+    history, and its bands narrow where the truth can only be as uncertain or more. Each quantile's
+    distance from the median, at a step past the pass, is kept no smaller than at the latest step
+    inside the pass a whole number of cycles earlier. Phase by phase, so a series that is quiet at
+    night stays quiet at night. The median is untouched."""
+    horizon = result.shape[-2]
+    cycle = torch.where(cycle <= first, cycle, torch.ones_like(cycle)).clamp_min(1)[..., None]
+    steps = torch.arange(first, horizon, device=result.device)
+    back = ((steps - first) // cycle + 1) * cycle  # whole cycles back, into the first pass
+    source = (steps - back)[..., None].expand(*result.shape[:-2], horizon - first, 9)
+    spread = result - result[..., 4:5]
+    held, tail = spread.gather(-2, source), spread[..., first:, :]
+    low = torch.arange(9, device=result.device) < 4
+    wider = torch.where(low, torch.minimum(tail, held), torch.maximum(tail, held))
+    return torch.cat([result[..., :first, :], result[..., first:, 4:5] + wider], dim=-2)
+
+
 def gated_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
     """Weight the candidates per series by their backtest loss, then clamp to the context.
 
@@ -1623,6 +1648,11 @@ def gated_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
             blend = blend.sum(0).sort(-1).values
             result = result.clone()
             result[rows] = blend
+    if config.infer_tail_floor and horizon > config.prediction_length:
+        filled = forward_fill(history)
+        cycle, clear = infer_period(filled, filled.isfinite().sum(-1))
+        cycle = torch.where(clear >= PERIOD_MIN_STRENGTH, cycle, torch.ones_like(cycle))
+        result = floor_tail(result, cycle, config.prediction_length)
     if config.infer_clamp:
         observed = history.isfinite()
         low = torch.where(observed, history, torch.inf).amin(-1)
@@ -1664,6 +1694,7 @@ def forecast(model, history: torch.Tensor, horizon: int, series_ids=None) -> tor
         or config.infer_sign_flip
         or config.infer_clamp
         or config.infer_shifts
+        or config.infer_tail_floor
     )
     try:
         predict = gated_forecast if tricks else rollout
