@@ -1,5 +1,5 @@
 model:
-  context_length: 1024
+  context_length: 4096  # the forecast reads 4096; each member reads 1024, see network_config
   prediction_length: 512
   patch_length: 32
   width: 384

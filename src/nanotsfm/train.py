@@ -41,6 +41,7 @@ from nanotsfm.model import (
     detect_periods,
     device_for,
     load_checkpoint,
+    network_config,
     patch_words,
 )
 
@@ -985,6 +986,9 @@ def train(
     seed: int | None = None,
 ):
     model_config, settings = load_config(config_path)
+    # config.json records the config as given, which the forecast reads in full; see network_config.
+    recorded = model_config
+    model_config = network_config(model_config)
     if data is not None:  # overrides every member's data
         settings["data"] = str(data)
         for overrides in settings.get("ensemble_vary", []):
@@ -1043,7 +1047,7 @@ def train(
     if output.exists() and any(output.iterdir()):
         raise FileExistsError("Use a fresh output directory, including for resume")
     output.mkdir(parents=True, exist_ok=True)
-    write_json(output / "config.json", {"model": config_fields(model_config), "training": settings})
+    write_json(output / "config.json", {"model": asdict(recorded), "training": settings})
     record_environment(output)
 
     def member_data(config, member, first_step):

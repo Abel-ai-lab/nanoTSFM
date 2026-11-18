@@ -76,6 +76,17 @@ PHASE_ALPHA = 0.05  # TinyCast's Fisher test level, Bonferroni-corrected across 
 REFINE_MAX_SCALED = 6.0  # bound on a masked patch's median in asinh units, as with shape spreads
 
 
+LIST_FIELDS = (
+    "infer_candidates",
+    "quantile_levels",
+    "coarse_blocks",
+    "infer_shifts",
+    "infer_contexts",
+    "rate_embedding",
+    "polyphase_forecast_strides",
+)
+
+
 @dataclass(frozen=True)
 class ModelConfig:
     context_length: int = 512
@@ -154,15 +165,10 @@ class ModelConfig:
         return sum(rate * tokens for rate, tokens in self.far_tiers) * self.patch_length
 
     def __post_init__(self):
-        object.__setattr__(self, "infer_candidates", tuple(self.infer_candidates))
-        object.__setattr__(self, "far_tiers", tuple(tuple(tier) for tier in self.far_tiers))
-        object.__setattr__(self, "quantile_levels", tuple(self.quantile_levels))
-        object.__setattr__(self, "coarse_blocks", tuple(self.coarse_blocks))
-        object.__setattr__(self, "infer_shifts", tuple(self.infer_shifts))
-        object.__setattr__(self, "infer_contexts", tuple(self.infer_contexts))
-        object.__setattr__(self, "rate_embedding", tuple(self.rate_embedding))
-        strides = tuple(self.polyphase_forecast_strides)
-        object.__setattr__(self, "polyphase_forecast_strides", strides)
+        # Lists, as config.json holds them, so that asdict(config) equals the recorded config.
+        for key in LIST_FIELDS:
+            object.__setattr__(self, key, list(getattr(self, key)))
+        object.__setattr__(self, "far_tiers", [list(tier) for tier in self.far_tiers])
         if set(self.infer_candidates) - set(INFER_CANDIDATES):
             raise ValueError(f"infer_candidates must come from {INFER_CANDIDATES}")
         if self.infer_temperature < 0 or self.infer_margin < 0 or self.infer_clamp < 0:
@@ -235,6 +241,7 @@ class ModelConfig:
             raise ValueError("tied_blocks must be a nonnegative integer")
         if self.shape_codes and self.far_tiers:
             raise ValueError("shape_codes reads recent patches only, so it excludes far_tiers")
+        strides = self.polyphase_forecast_strides
         if any(type(stride) is not int or stride < 2 for stride in strides):
             raise ValueError("polyphase_forecast_strides must be integers of at least 2")
         if not 0 <= self.polyphase_forecast_weight <= 1:
@@ -330,6 +337,19 @@ class ModelConfig:
                 "polyphase_forecast_strides, residual_target, phase_tokens, phase_bins, "
                 "rope_periods, refine_masked_stats, rate_embedding and head_hidden"
             )
+
+
+def network_config(config: ModelConfig) -> ModelConfig:
+    """The network's own config. With polyphase_forecast_strides, context_length is the history the
+    forecast reads, and the network reads that divided by the longest stride: each phase of the
+    longest stride then gets the network's full context. See Polyphase."""
+    if not config.polyphase_forecast_strides:
+        return config
+    stride = max(config.polyphase_forecast_strides)
+    if config.context_length % (stride * config.patch_length):
+        raise ValueError("With polyphase_forecast_strides, context_length must divide into "
+                         "patches after division by the longest stride")
+    return replace(config, context_length=config.context_length // stride)
 
 
 def config_fields(config: ModelConfig) -> dict:
