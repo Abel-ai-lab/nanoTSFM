@@ -92,10 +92,11 @@ CRPS and MASE are relative to Seasonal Naive, lower is better. GIFT-Eval is mean
 
 The one-model rows are member 0 of each development ensemble run, graded alone: seed 7 scored 0.5178, seed 1 0.5206 and seed 2 0.5202. That is 0.1121 below the record, and the record rule needs 0.013. The A100 runs retrain the same configuration as one model and replace these numbers. One model with all the forecast-time steps beats the five-member ensemble without them, 0.5195 against 0.5259. The ensemble itself was worth about 0.006 here: the five members with the tail floor scored 0.5224 ± 0.0007, against 0.5280 for one.
 
-**Each forecast-time step.** Every part of the model's forecast, removed one at a time from the submission on GIFT-Eval, seed 7, and tested alone on held-out sources, 3 seeds paired, all on top of the gate. Negative is better.
+**Each forecast-time step.** Every part of the model's forecast, removed one at a time from the submission on GIFT-Eval, seed 7, and tested alone on held-out sources, 3 seeds paired, on top of the gate (the gate's own row is against no gate). Negative is better. The gate is the one step that does nothing on held-out sources; it is in on GIFT-Eval evidence alone, as the Discussion says.
 
 | Step | GIFT-Eval, seed 7, without it | Its GIFT-Eval gain | Held-out deltas | Held-out mean |
 | --- | ---: | ---: | --- | ---: |
+| Deseason gate | 0.5308 | -0.0130 | +0.0006, +0.0012, +0.0001 | +0.0006 |
 | Views | 0.5236 | -0.0058 | -0.0078, -0.0109, -0.0087 | -0.0091 |
 | Tail floor | | -0.0035 alone (0.5302 to 0.5267) | -0.0048, -0.0049, -0.0050 | -0.0049 |
 | Sign clip and integer snap | 0.5193 | -0.0015 | -0.0029, -0.0034, -0.0023 | -0.0029 |
