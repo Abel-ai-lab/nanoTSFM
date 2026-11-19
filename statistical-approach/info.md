@@ -26,6 +26,90 @@ The GEP-M training corpus contains 26,154 time series distributed across 87 sour
 
 continue to look at within-source diversity: determining how much individual time series differ from one another inside the same source. (hypothesis: uniformly sampling across the different series might not be optimal and exploiting a statistic might improve training time or accuracy)
 
+azure_vm_traces_2017/74018 — highest skewness and kurtosis.
+azure_vm_traces_2017/97425 — another extreme series.
+One Azure series around the source's median skewness and kurtosis.
+
+- Analyzed 24,601 eligible GEP-M time series using four statistical features: relative IQR, skewness, kurtosis, and autocorrelation.
+- Divided each feature into five quantile-based bins, producing 625 possible joint statistical profiles.
+- Identified 450 distinct observed profiles, representing 72% of possible profiles.
+- Evaluated random sampling at 10%, 25%, 50%, and 75% of the dataset over 30 repetitions.
+| Sample Percentage | Sample Size | Mean Coverage | Std Coverage | Mean Entropy Retention | Std Entropy Retention | Mean Profiles |
+|------------------:|------------:|--------------:|-------------:|-----------------------:|----------------------:|--------------:|
+| 10% | 2,460 | 0.711852 | 0.013961 | 0.984641 | 0.003545 | 320.333333 |
+| 25% | 6,150 | 0.838889 | 0.013696 | 0.994132 | 0.001849 | 377.500000 |
+| 50% | 12,300 | 0.925852 | 0.007862 | 0.997787 | 0.001161 | 416.633333 |
+| 75% | 18,450 | 0.971556 | 0.007817 | 0.999427 | 0.000686 | 437.200000 |
+shows that there is a chance of losing rare statistical profiles(there is a chance that these profiles are just noise) and that there could be redundancy among commonly represented profiles. What does better coverage result?
+
+Compared uniform random sampling against coverage-aware sampling.
+- Coverage-aware sampling selected one series from each observed statistical profile before randomly filling the remaining sample capacity.
+- Evaluated both approaches at 10%, 25%, 50%, and 75% of GEP-M, using 30 repetitions.
+- Measured statistical profile coverage and Jensen-Shannon divergence (JS) from the original profile distribution.
+| Percentage | Method | Sample Size | Mean Coverage | Std Coverage | Mean JS | Std JS |
+|-----------:|----------------|------------:|--------------:|-------------:|--------:|-------:|
+| 10% | Coverage-aware | 2,460 | 1.000000 | 0.000000 | 0.022936 | 0.001099 |
+| 10% | Uniform | 2,460 | 0.710593 | 0.012279 | 0.021628 | 0.001470 |
+| 25% | Coverage-aware | 6,150 | 1.000000 | 0.000000 | 0.006596 | 0.000352 |
+| 25% | Uniform | 6,150 | 0.837259 | 0.013657 | 0.007841 | 0.000492 |
+| 50% | Coverage-aware | 12,300 | 1.000000 | 0.000000 | 0.002062 | 0.000125 |
+| 50% | Uniform | 12,300 | 0.925926 | 0.011485 | 0.002713 | 0.000188 |
+| 75% | Coverage-aware | 18,450 | 1.000000 | 0.000000 | 0.000675 | 0.000055 |
+| 75% | Uniform | 18,450 | 0.971333 | 0.008177 | 0.000926 | 0.000077 |
+
+These experiments provide initial evidence that statistical coverage can be improved through targeted sampling without increasing the number of training series.
+
+rare series possiblities:
+- Useful rare behavior - Represents a temporal or distributional pattern that helps the model generalize to otherwise underrepresented forecasting tasks.
+- Redundant rare behavior - Is uncommon, but does not provide meaningful information beyond other series.
+- Noise or artifact - Results from unstable statistics, short series, missing data, or unusual observations.
+
+look for structural redundancy in the GEP slices and try to find mathemtical way to perform similar with less data needed by increasing weights of categories of the series distribution?
+
+experiment method:
+```
+uv run python statistical-approach/precompute_statistics.py \
+    --dataset GEP-M \
+    --split train \
+    --horizon 1
+```
+manually adjust profile power in variable in data.py - should get moved to yaml config but fails validation checks
+### Statistical features
+| Statistic | Description | What it captures |
+|---|---|---|
+| Relative IQR | Interquartile range relative to the series' scale | Relative variability and dispersion |
+| Skewness | Asymmetry of the value distribution | Distributional asymmetry and one-sided tails |
+| Excess kurtosis | Tail heaviness relative to a normal distribution | Extreme observations and potential spikes |
+| Lag-1 autocorrelation | Correlation between consecutive observations | Short-term temporal dependence and persistence |
+
+### statisical profile-aware sampling
+- Source power (source_power=1.0): Controls selection between data sources. A value of 1.0 makes sources proportional to their number of individual time series, resulting in uniform sampling across all series at the source-selection level.
+- Profile power (profile_power=0.5): Controls selection of statistical profiles within the selected source. Profiles are constructed by grouping series according to four statistical features: relative IQR, skewness, excess kurtosis, and lag-1 autocorrelation. Square-root weighting increases the probability of selecting less frequently represented profiles.
+### sampling formula:
+$$
+P(k\mid s)=\frac{n_k^q}{\sum_j n_j^q}
+$$
+where $n_k$ is the number of series belonging to profile $k$ in source $s$.
+
+- 0.0 - Uniform across profiles - Every profile has equal selection probability, regardless of its size. Strongest emphasis on rare profiles.
+- 0.5 - Square-root weighting - Favors smaller profiles, but still gives larger profiles more probability. Moderate emphasis on rare profiles.
+- 1.0 - Proportional to profile size - Profiles are selected according to their share of the source's series. Equivalent to uniform sampling of individual series.
+
+### Experimental configurations
+
+| Configuration | `source_power` | `profile_power` | Purpose |
+|---|---:|---:|---|
+| Baseline | 1.0 | 1.0 | Preserve original series distribution |
+| Moderate profile emphasis | 1.0 | 0.5 | Increase exposure to underrepresented profiles |
+| Equal profile sampling | 1.0 | 0.0 | Give all observed profiles equal selection probability |
+
+look into filtering with pycatch22 or tsfresh
+
+possible statistics: Permutation Enropty, Normalized Spectral Entropy, Lag-1 lag-k autocorrelation ratio
+
+awareness checks:
+- One important point: your existing global coverage-aware experiment guarantees all 450 profiles, but it does not guarantee that the original source distribution is preserved.
+
 ### context/proposal for LLM context
 Research Proposal: Statistical Diversity-Aware Data Sampling for nanoTSFM
 1. Research Motivation
@@ -101,4 +185,5 @@ A successful result would demonstrate that statistical characterization can impr
 	7. Compare against existing source-level sampling strategies.
 	8. Run repeated experiments and analyze results.
 The initial priority is to understand the relationship between statistical composition and generalization, then test one reproducible sampling improvement. Implementing every proposed statistical technique or testing every dataset/configuration combination is not required.
+https://github.com/Abel-ai-lab/nanoTSFM/
 
