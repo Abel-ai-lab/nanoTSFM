@@ -27,6 +27,8 @@ Title a submission "<team>: <mean GIFT-Eval CRPS>, <what changed>", for example
 - [ ] If my data differs from the record's, the report says what changed, how I chose it, and why.
 - [ ] My fork is public.
 - [ ] No runs, checkpoints, data or notebook outputs are committed.
+- [ ] The pull request holds only the config and code my final configuration needs; pilot
+      configs and job scripts stay on my fork.
 
 ## Change
 

@@ -44,6 +44,12 @@ STEPS = {
 # GIFT-Eval submission (gift-eval pull 251), from the benchmark's own scoring code; its parameter
 # count is the safetensors total on its Hugging Face page.
 SIMONS = "https://github.com/Abel-ai-lab/Simons"
+# The page's header opens with a line to the Simons 1 collection: the four sizes and their data.
+SIMONS_HF = "https://huggingface.co/collections/abel-lab/simons-1-6ae3d4ce9705938e293c52dd"
+NEWS = (
+    "<b>Simons</b>, the best open-source time series foundation model, trained with nanoTSFM. "
+    "See it on Hugging Face"
+)
 OURS = {
     "Simons-297M": {"mase": 0.673, "crps": 0.457, "parameters": 297_230_368},
 }
@@ -126,6 +132,14 @@ a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outl
 .band p {{ margin: 12px 0 24px; font-size: 18px; max-width: 60ch; }}
 .band .latest {{ margin: 20px 0 0; font-size: 14px; max-width: none; }}
 .band .latest a, .band .latest b {{ color: #F4F5F1; }}
+.news {{ display: inline-flex; align-items: center; gap: 10px; max-width: 100%; margin-bottom: 24px;
+  color: #C9D3DC; font-size: 14px; line-height: 1.45; text-decoration: none;
+  border: 1px solid #2B5A60; border-radius: 18px; padding: 5px 14px 5px 5px; }}
+.news:hover {{ border-color: #4FC3C8; }}
+.news b {{ color: #F4F5F1; }}
+.news .tag {{ flex: none; background: #4FC3C8; color: #14202B; border-radius: 12px;
+  padding: 1px 9px; font-size: 12px; font-weight: 600; }}
+.news .go {{ color: #4FC3C8; white-space: nowrap; }}
 .buttons {{ display: flex; flex-wrap: wrap; gap: 10px; }}
 .buttons a {{ display: inline-flex; align-items: center; gap: 8px; color: #F4F5F1;
   border: 1px solid #3A4A5A; border-radius: 6px; padding: 7px 14px; text-decoration: none;
@@ -904,6 +918,8 @@ def page(entries) -> str:
 </head>
 <body>
 <header class="band"><div class="inner">
+<a class="news" href="{SIMONS_HF}"><span class="tag">New</span>
+<span>{NEWS}<span class="go">&nbsp;→</span></span></a>
 <h1><i>nano</i>TSFM</h1>
 <p>Hill-climbing GIFT-Eval with one A100 and one hour.</p>
 <nav class="buttons">{buttons}</nav>
