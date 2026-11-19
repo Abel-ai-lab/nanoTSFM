@@ -14,6 +14,9 @@ INFER_CANDIDATES = ("rate2", "rate4", "seasonal", "deseason", "flip")
 COMBINERS = ("mean", "median", "asinh_mean")
 SWITCHES = (
     "infer_tail_floor",
+    "infer_views",
+    "infer_sign_clip",
+    "infer_integer_snap",
     "far_tiers",
     "scale_halflife",
     "mask_padded",
@@ -160,6 +163,9 @@ class ModelConfig:
     sort_in_training: bool = True  # False scores the head's raw quantiles; forecasts still sort
     head_hidden: int = 0  # hidden size of a residual MLP ahead of the head; 0 is none
     infer_tail_floor: bool = False  # past one pass, bands stay as wide as a cycle before
+    infer_views: bool = False  # median of the x, -x and, if never negative, square-root views
+    infer_sign_clip: bool = False  # a one-signed history keeps its forecasts on that side of 0
+    infer_integer_snap: bool = False  # round forecasts of a never-negative whole-number history
 
     @property
     def far_length(self) -> int:
@@ -203,6 +209,11 @@ class ModelConfig:
         clamp = self.forecast_clamp
         if clamp is not None and (type(clamp) not in (int, float) or not 0 < clamp < float("inf")):
             raise ValueError("forecast_clamp must be finite and positive, or None")
+        for key in ("infer_views", "infer_sign_clip", "infer_integer_snap"):
+            if type(getattr(self, key)) is not bool:
+                raise ValueError(f"{key} must be true or false")
+        if self.infer_views and self.infer_sign_flip:
+            raise ValueError("infer_views already holds the sign-flipped view")
         if type(self.infer_tail_floor) is not bool:
             raise ValueError("infer_tail_floor must be true or false")
         if self.combiner not in COMBINERS:
@@ -1530,7 +1541,40 @@ def signed_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
     return -rollout(model, -history, horizon, series_ids).flip(-1)
 
 
+def views_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
+    """Per quantile, the mean of the middle two of four forecasts: of x, of -x, and for a
+    never-negative series of sqrt(x) and -sqrt(x), each mapped back. Any other series counts its
+    first two views twice. Every view is a forecast of this model from the series' own history."""
+    native = rollout(model, history, horizon, series_ids)
+    flipped = signed_forecast(model, history, horizon, series_ids)
+    observed = history.isfinite()
+    nonneg = observed.any(-1) & torch.where(observed, history >= 0, True).all(-1)  # [B,V]
+    members = [native, flipped]
+    rows = nonneg.any(-1)
+    if rows.any():
+        root = torch.where(observed[rows], history[rows].clamp_min(0).sqrt(), torch.nan)
+        keep = nonneg[rows][..., None, None]
+        views = (
+            (rollout(model, root, horizon, series_ids[rows]), native),
+            (signed_forecast(model, root, horizon, series_ids[rows]), flipped),
+        )
+        for view, fallback in views:
+            full = fallback.clone()
+            full[rows] = torch.where(keep, view.sign() * view.square(), fallback[rows])
+            members.append(full)
+    else:
+        members += [native, flipped]
+    ordered = torch.stack([member.sort(-1).values for member in members]).sort(0).values
+    return ordered[1:3].mean(0)
+
+
 def model_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
+    config = model.config
+    if config.infer_views:  # views over the first pass; past it, the plain rollout
+        first = config.prediction_length
+        native = rollout(model, history, horizon, series_ids)
+        near = views_forecast(model, history, min(horizon, first), series_ids)
+        return torch.cat([near, native[..., first:, :]], dim=-2).sort(-1).values
     base = rollout(model, history, horizon, series_ids)
     if model.config.infer_sign_flip:
         base = (base + signed_forecast(model, history, horizon, series_ids)) / 2
@@ -1661,6 +1705,19 @@ def gated_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
         low, high = (low - room)[..., None, None], (high + room)[..., None, None]
         clamped = torch.minimum(torch.maximum(result, low), high)
         result = torch.where(observed.any(-1)[..., None, None], clamped, result)
+    if config.infer_sign_clip or config.infer_integer_snap:
+        observed = history.isfinite()
+        low = torch.where(observed, history, torch.inf).amin(-1)
+        high = torch.where(observed, history, -torch.inf).amax(-1)
+        seen = observed.any(-1)
+        nonneg = (seen & (low >= 0))[..., None, None]
+        if config.infer_sign_clip:
+            nonpos = (seen & (high <= 0) & (low < 0))[..., None, None]
+            result = torch.where(nonneg, result.clamp_min(0), result)
+            result = torch.where(nonpos, result.clamp_max(0), result)
+        if config.infer_integer_snap:
+            whole = torch.where(observed, history == history.round(), True).all(-1)
+            result = torch.where(nonneg & whole[..., None, None], result.round(), result)
     return result
 
 
@@ -1695,6 +1752,9 @@ def forecast(model, history: torch.Tensor, horizon: int, series_ids=None) -> tor
         or config.infer_clamp
         or config.infer_shifts
         or config.infer_tail_floor
+        or config.infer_views
+        or config.infer_sign_clip
+        or config.infer_integer_snap
     )
     try:
         predict = gated_forecast if tricks else rollout
