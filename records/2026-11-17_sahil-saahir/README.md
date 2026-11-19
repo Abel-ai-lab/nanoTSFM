@@ -38,7 +38,8 @@ should do little at 5,000 steps.
   `nanotsfm.data` downloads it on first load.
 - **Training:** 20,000 steps (from 5,000), batch 256, AdamW at a peak learning rate of 1e-3 with
   5% warmup and cosine decay to 10%. The learning-rate schedule stretches with the step count.
-  Config: `configs/track-a/sp1-gepl-20k.yaml`.
+  Config: `configs/gep-l.yaml`. The final runs trained it as `configs/track-a/sp1-gepl-20k.yaml`
+  (same contents); the file was renamed after the runs.
 - **Seeds and hardware:** final runs used seeds 7, 1 and 2 at commit `7bed56a` on one RunPod
   A100 80GB PCIe. They often shared the GPU with other runs, so their training times (675, 959
   and 768 s) overstate a solo run. All runs stayed well under the 3,600-second cap.
@@ -84,6 +85,13 @@ without transfer. GEP-L at 20k gives up some of that in-distribution gain (GEP-T
 and transfers.
 
 ### Other pilots (1 seed each, on top of GEP-L 20k unless noted)
+
+The pilot configs and the optional code they use (`freq_power`, `source_power` above 1,
+`qk_norm`, `swiglu`, `mask_span_max`) are not part of this pull request, which keeps only what the
+final configuration needs. They stay reproducible at commit `7bed56a`: the GEP-L pilots are in
+[`configs/round2/`](https://github.com/sapai5/nanoTSFM/tree/7bed56a/configs/round2), and the GEP-M
+pilots and the 2x2 ablation's GEP-M 20k cell are in
+[`configs/track-a/`](https://github.com/sapai5/nanoTSFM/tree/7bed56a/configs/track-a).
 
 | Change | GIFT-Eval CRPS |
 | --- | ---: |
@@ -132,8 +140,9 @@ full corpus, and resample the weekly and monthly sources where GEP-L regresses.
 
 ## Contributions and attribution
 
-- **Sahil Pai:** experiment design, code (frequency-group sampling, `source_power` above 1,
-  optional QK-norm/SwiGLU/mask span), all training and evaluation runs, analysis.
+- **Sahil Pai:** experiment design, pilot code at `7bed56a` (frequency-group sampling,
+  `source_power` above 1, optional QK-norm/SwiGLU/mask span), all training and evaluation runs,
+  analysis.
 - **Saahir Khan:** report writing and editing.
 - **Built on** record 2 by Shu-Wan and the nanoTSFM baseline. QK-norm, SwiGLU and longer masked
   spans follow the directions in `docs/directions.md` (Toto 2.0).

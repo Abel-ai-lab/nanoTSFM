@@ -21,8 +21,6 @@ class ModelConfig:
     layers: int = 3  # causal time layers; one variate layer follows them
     heads: int = 4
     dropout: float = 0.0
-    qk_norm: bool = False  # RMS-normalize queries and keys per head before attention
-    swiglu: bool = False  # gated SiLU MLP at the same parameter count as the GELU MLP
 
     def __post_init__(self):
         for key in (
@@ -41,9 +39,6 @@ class ModelConfig:
             raise ValueError("width must split into heads of even size")
         if not 0 <= self.dropout < 1:
             raise ValueError("dropout must be in [0, 1)")
-        for key in ("qk_norm", "swiglu"):
-            if not isinstance(getattr(self, key), bool):
-                raise ValueError(f"{key} must be true or false")
 
 
 def causal_scale(values: torch.Tensor, patch: int):
@@ -68,21 +63,6 @@ def rotate(x: torch.Tensor) -> torch.Tensor:
     return torch.cat([first * cos - second * sin, first * sin + second * cos], dim=-1)
 
 
-class SwiGLU(nn.Module):
-    """SiLU-gated MLP; hidden size 8/3 * width keeps the 4 * width GELU MLP's parameter count."""
-
-    def __init__(self, width: int, dropout: float):
-        super().__init__()
-        hidden = 8 * width // 3
-        self.gate_up = nn.Linear(width, 2 * hidden)
-        self.down = nn.Linear(hidden, width)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        gate, up = self.gate_up(x).chunk(2, dim=-1)
-        return self.dropout(self.down(F.silu(gate) * up))
-
-
 class Block(nn.Module):
     def __init__(self, config: ModelConfig, causal: bool):
         super().__init__()
@@ -90,26 +70,18 @@ class Block(nn.Module):
         self.attention_norm = nn.RMSNorm(config.width)
         self.qkv = nn.Linear(config.width, 3 * config.width, bias=False)
         self.out = nn.Linear(config.width, config.width, bias=False)
-        head_width = config.width // config.heads
-        self.q_norm = nn.RMSNorm(head_width) if config.qk_norm else None
-        self.k_norm = nn.RMSNorm(head_width) if config.qk_norm else None
         self.mlp_norm = nn.RMSNorm(config.width)
-        if config.swiglu:
-            self.mlp = SwiGLU(config.width, config.dropout)
-        else:
-            self.mlp = nn.Sequential(
-                nn.Linear(config.width, 4 * config.width),
-                nn.GELU(),
-                nn.Linear(4 * config.width, config.width),
-                nn.Dropout(config.dropout),
-            )
+        self.mlp = nn.Sequential(
+            nn.Linear(config.width, 4 * config.width),
+            nn.GELU(),
+            nn.Linear(4 * config.width, config.width),
+            nn.Dropout(config.dropout),
+        )
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
         n, s, width = x.shape
         q, k, v = self.qkv(self.attention_norm(x)).view(n, s, 3, self.heads, -1).unbind(2)
         q, k, v = (t.transpose(1, 2) for t in (q, k, v))
-        if self.q_norm is not None:
-            q, k = self.q_norm(q), self.k_norm(k)
         if self.causal:
             q, k = rotate(q), rotate(k)
         attended = F.scaled_dot_product_attention(
