@@ -21,6 +21,10 @@ commit, so any record can be reproduced and you may start from any of them.
 
 - **Your code**, as commits on a branch of your fork. Merge `main` before your final runs, so that
   after the merge `main` trains exactly what your runs trained; the guard checks this.
+- **Only what the final configuration needs:** its config and the code it runs. Pilot and
+  ablation configs, options the final configuration leaves off, and job scripts for your own
+  cluster stay on your fork, and the report can link them at a commit. Trim them before the final
+  runs: removing code or configs afterwards changes the training code, so the runs must be redone.
 - **Three or more runs** of your final configuration, with different seeds and at one commit.
   Report every run of that configuration, not the best ones.
 - **A record folder**, `records/<date>_<name>/`:
