@@ -107,7 +107,8 @@ MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1
 RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
 FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
 the two panels by metric, each small gray dot is one verified run and the orange line is the
-record, the mean of its runs. Records are decided on CRPS."""
+record, the mean of its runs. Records are decided on CRPS. Numbers are records, as in the table
+below, which gives each record's change."""
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
     "&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,600&display=swap"
@@ -313,6 +314,15 @@ tip.addEventListener("pointerenter", () => clearTimeout(closing));
 tip.addEventListener("pointerleave", leave);
 addEventListener("pointerdown", (event) => event.target.closest(".figure svg, .tip") || show(null));
 addEventListener("scroll", () => show(null), true);
+// A record's number in the table, or a link to #record-N, opens that record's details.
+function openRecord(hash) {
+  const target = hash && document.getElementById(hash.slice(1));
+  if (target?.tagName === "DETAILS") target.open = true;
+}
+for (const link of document.querySelectorAll('a[href^="#record-"]')) {
+  link.addEventListener("click", () => openRecord(link.hash));
+}
+openRecord(location.hash);
 """
 
 
@@ -525,6 +535,7 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
     """MASE and CRPS by record: each run a gray dot, the record a step line.
 
     The two panels sit side by side, or one above the other in the narrow layout for phones.
+    Records go by their numbers on the axis; the records table says what each one changed.
     """
     # One panel's width and height, then its top, bottom, left and right margins.
     span, block, top, bottom, lead, trail = 520, 400, 86, 44, 64, 146
@@ -578,30 +589,13 @@ def progress_chart(entries, standalone=False, narrow=False) -> str:
         for i in range(1, count):
             path += f" H{xs[i]:.1f} V{ys[means[i]]:.1f}"
         parts.append(f'<path class="best" d="{path} H{right}"/>')
-        # Labels keep clear of the points and of the step line, inside the plot.
-        taken = [(xs[i] - 6, ys[m] - 6, xs[i] + 6, ys[m] + 6) for i, m in enumerate(means)]
-        corners = [(xs[0], ys[means[0]])]
-        for i in range(1, count):
-            corners += [(xs[i], ys[means[i - 1]]), (xs[i], ys[means[i]])]
-        corners.append((right, ys[means[-1]]))
-        for (ax, ay), (bx, by) in zip(corners, corners[1:], strict=False):
-            steps = max(1, int(math.hypot(bx - ax, by - ay) / 6))
-            for k in range(steps + 1):
-                px, py = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
-                taken.append((px - 3, py - 3, px + 3, py + 3))
-        frame = (left, down + top - 30, right, down + block - bottom)
         for i, (folder, team, result) in enumerate(entries):
-            label = team["description"] if i else "baseline"
-            y = ys[means[i]]
             parts.append(
-                f'<circle class="rec" cx="{xs[i]:.1f}" cy="{y:.1f}" r="5"'
+                f'<circle class="rec" cx="{xs[i]:.1f}" cy="{ys[means[i]]:.1f}" r="5"'
                 f"{record_tip(i + 1, folder, team, result)}/>"
                 f'<text class="tick" x="{xs[i]:.1f}" y="{down + block - bottom + 20}" '
                 f'text-anchor="middle">{i + 1}</text>'
             )
-            if not narrow:  # the narrow layout has no room; the record's number stands for it
-                where = place(xs[i], y, 5, label, taken, frame)
-                parts.append(f'<text class="change" {where}>{esc(label)}</text>')
         parts.append(
             f'<text class="sub" x="{(left + right) / 2:.1f}" y="{down + block - 6}" '
             'text-anchor="middle">Record</text>'
@@ -647,7 +641,8 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
     """CRPS against MASE, best at the upper right: records and published models as points.
 
     Both axes are reversed, so progress climbs to the upper right as in the charts by record. A
-    point's size shows its parameter count. The narrow layout for phones labels records by number.
+    point's size shows its parameter count. Records are labeled by number, which the records table
+    explains, so the plot stays legible as records accumulate.
     """
     width, height, left, right, top, bottom = 1040, 460, 64, 40, 56, 56
     if narrow:
@@ -730,11 +725,7 @@ def scatter_chart(entries, standalone=False, narrow=False) -> str:
     labels = []
     for i, (folder, team, result) in enumerate(entries):
         cx, cy, r = records[i]
-        label = (
-            f"{i + 1}. {team['description'] if i else 'baseline'} · {size(result['parameters'])}"
-        )
-        if narrow:
-            label = str(i + 1)
+        label = str(i + 1)
         parts.append(
             f'<circle class="rec" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"'
             f"{record_tip(i + 1, folder, team, result)}/>"
@@ -842,19 +833,24 @@ def fmt(summary, key="geometric_relative_crps") -> str:
 
 
 def records_table(entries) -> str:
+    """One row per record, numbered as in the figures; a number opens the record's details."""
     rows = "".join(
-        f'<tr><td class="n">{i}</td><td class="n">{esc(f.split("_", 1)[0])}</td>'
+        f'<tr><td class="n"><a href="#record-{i}">{i}</a></td>'
+        f'<td class="n">{esc(f.split("_", 1)[0])}</td>'
         f"<td>{esc(t['description'])}</td>"
         f'<td class="n" data-label="CRPS">{r["gift_eval"]["crps"]:.4f} ± '
         f"{r['gift_eval']['crps_sd']:.4f}</td>"
         f'<td class="n" data-label="MASE">{r["gift_eval"]["mase"]:.4f}</td>'
-        f'<td class="n" data-label="Runs">{r["gift_eval"]["runs"]}</td><td>{people(t)}</td></tr>'
+        f'<td class="n" data-label="Parameters">{size(r["parameters"])}</td>'
+        f'<td class="n" data-label="Runs">{r["gift_eval"]["runs"]}</td>'
+        f'<td class="n" data-label="Commit"><a href="{REPO}/commit/{esc(r["commit"])}">'
+        f"{esc(r['commit'][:7])}</a></td><td>{people(t)}</td></tr>"
         for i, (f, t, r) in enumerate(entries, 1)
     )
     return (
         '<div class="scroll"><table class="records"><tr><th>#</th><th>Date</th><th>Change</th>'
-        "<th>GIFT-Eval CRPS</th><th>MASE</th><th>Runs</th><th>Contributors</th></tr>"
-        f"{rows}</table></div>"
+        "<th>GIFT-Eval CRPS</th><th>MASE</th><th>Parameters</th><th>Runs</th><th>Commit</th>"
+        f"<th>Contributors</th></tr>{rows}</table></div>"
     )
 
 
@@ -878,7 +874,7 @@ def details(entries) -> str:
                 f"{', '.join(scores[:-1])} and {scores[-1]}. The team's runs:</p>"
             )
         out.append(
-            f"<details><summary>Record {i}: {esc(team['description'])} "
+            f'<details id="record-{i}"><summary>Record {i}: {esc(team["description"])} '
             f'<span class="dim">({result["gift_eval"]["crps"]:.4f})</span></summary>'
             f'<div class="body">{retrains}<div class="scroll"><table class="runs"><tr><th>Seed</th>'
             "<th>GIFT-Eval CRPS</th><th>MASE</th><th>GEP-Val</th><th>GEP-Test</th>"
