@@ -34,7 +34,8 @@ commit, so any record can be reproduced and you may start from any of them.
     submission is closed without review ([rules](rules.md#data)).
   - `result.json`, written by `./run.sh submit`: the commit, configuration, data and versions, and
     for each run its checkpoint's SHA-256, training time, GIFT-Eval, GEP-Val and GEP-Test scores
-    and training log, with the mean and spread over runs.
+    and training log, with the mean and spread over runs. The log keeps every validation loss and
+    at most 250 training-loss points; past that, each point averages a window of logged steps.
 
 ## Steps
 
