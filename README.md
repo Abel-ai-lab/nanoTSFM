@@ -49,6 +49,7 @@ The [rules](docs/rules.md) have the details.
 | ---: | --- | --- | --- | --- | --- |
 | 1 | $0.6699 \pm 0.0073$ | Simplified Toto 2.0, 5,000 steps on GEP-M | 2026-09-29 | [2026-09-29_baseline](records/2026-09-29_baseline/) | [@Shu-Wan](https://github.com/Shu-Wan) |
 | 2 | $0.6316 \pm 0.0045$ | Weight every series equally | 2026-09-29 | [2026-09-29_Shu-Wan](records/2026-09-29_Shu-Wan/) | [@Shu-Wan](https://github.com/Shu-Wan) |
+| 3 | $0.6121 \pm 0.0036$ | GEP-L (500k series) with 4x the training steps (20,000) | 2026-11-17 | [2026-11-17_sahil-saahir](records/2026-11-17_sahil-saahir/) | [@sapai5](https://github.com/sapai5), [@Saahir16](https://github.com/Saahir16) |
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
