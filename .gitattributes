@@ -1,0 +1,2 @@
+# Collapse the packaged runs in pull request diffs; ./run.sh submit writes them.
+records/*/result.json linguist-generated=true
