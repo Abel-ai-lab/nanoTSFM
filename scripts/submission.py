@@ -192,7 +192,7 @@ def thin(log: list[dict], window: int) -> list[dict]:
 
 def write_result(path: Path, result: dict):
     """Write result.json with two-space indents and one line per training-log entry."""
-    logs = {f"<log of {run['run']}>": run["log"] for run in result["runs"]}
+    logs = {f"<log {i}>": run["log"] for i, run in enumerate(result["runs"])}
     runs = [{**run, "log": key} for run, key in zip(result["runs"], logs, strict=True)]
     text = json.dumps({**result, "runs": runs}, indent=2)
     for key, log in logs.items():
