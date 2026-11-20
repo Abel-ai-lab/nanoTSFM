@@ -34,8 +34,9 @@ One Azure series around the source's median skewness and kurtosis.
 - Divided each feature into five quantile-based bins, producing 625 possible joint statistical profiles.
 - Identified 450 distinct observed profiles, representing 72% of possible profiles.
 - Evaluated random sampling at 10%, 25%, 50%, and 75% of the dataset over 30 repetitions.
+
 | Sample Percentage | Sample Size | Mean Coverage | Std Coverage | Mean Entropy Retention | Std Entropy Retention | Mean Profiles |
-|------------------:|------------:|--------------:|-------------:|-----------------------:|----------------------:|--------------:|
+|------------------|------------:|--------------:|-------------:|-----------------------:|----------------------:|--------------:|
 | 10% | 2,460 | 0.711852 | 0.013961 | 0.984641 | 0.003545 | 320.333333 |
 | 25% | 6,150 | 0.838889 | 0.013696 | 0.994132 | 0.001849 | 377.500000 |
 | 50% | 12,300 | 0.925852 | 0.007862 | 0.997787 | 0.001161 | 416.633333 |
@@ -46,8 +47,9 @@ Compared uniform random sampling against coverage-aware sampling.
 - Coverage-aware sampling selected one series from each observed statistical profile before randomly filling the remaining sample capacity.
 - Evaluated both approaches at 10%, 25%, 50%, and 75% of GEP-M, using 30 repetitions.
 - Measured statistical profile coverage and Jensen-Shannon divergence (JS) from the original profile distribution.
+
 | Percentage | Method | Sample Size | Mean Coverage | Std Coverage | Mean JS | Std JS |
-|-----------:|----------------|------------:|--------------:|-------------:|--------:|-------:|
+|-----------|----------------|------------:|--------------:|-------------:|--------:|-------:|
 | 10% | Coverage-aware | 2,460 | 1.000000 | 0.000000 | 0.022936 | 0.001099 |
 | 10% | Uniform | 2,460 | 0.710593 | 0.012279 | 0.021628 | 0.001470 |
 | 25% | Coverage-aware | 6,150 | 1.000000 | 0.000000 | 0.006596 | 0.000352 |
@@ -86,9 +88,9 @@ manually adjust profile power in variable in data.py - should get moved to yaml 
 - Source power (source_power=1.0): Controls selection between data sources. A value of 1.0 makes sources proportional to their number of individual time series, resulting in uniform sampling across all series at the source-selection level.
 - Profile power (profile_power=0.5): Controls selection of statistical profiles within the selected source. Profiles are constructed by grouping series according to four statistical features: relative IQR, skewness, excess kurtosis, and lag-1 autocorrelation. Square-root weighting increases the probability of selecting less frequently represented profiles.
 ### sampling formula:
-$$
+```math
 P(k\mid s)=\frac{n_k^q}{\sum_j n_j^q}
-$$
+```
 where $n_k$ is the number of series belonging to profile $k$ in source $s$.
 
 - 0.0 - Uniform across profiles - Every profile has equal selection probability, regardless of its size. Strongest emphasis on rare profiles.
