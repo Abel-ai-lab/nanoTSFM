@@ -1,5 +1,5 @@
 ---
-team: anannay-sharma
+team: anannay-josh
 description: source_power 1.5, sign-flip and downsampling augmentation, flip-symmetric nonnegative forecasts
 members:
   - name: Anannay Sharma
@@ -9,7 +9,7 @@ members:
 ai_disclosure: Claude (Anthropic) helped find research papers relevant to the problem, helped implement the code changes, assisted in running the experiments, and helped refine this report. Every number here was checked against the run logs and score files.
 ---
 
-# anannay-sharma
+# anannay-josh
 
 ## Hypothesis
 
