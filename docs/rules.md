@@ -51,15 +51,12 @@ is the challenge.
 
 - Allowed: any part of [GIFT-Eval Pretrain](https://huggingface.co/datasets/Salesforce/GiftEvalPretrain)
   (revision 6830b62), in any selection, mixture or preprocessing, including the
-  [GEP slices](data.md).
-- **Simple augmentation** counts as preprocessing: transforming one real GEP window during
-  training, with a few parameters set in the config, such as negation, scaling, averaging over a
-  few steps, cropping or masking.
+  [GEP slices](data.md). Preprocessing includes simple augmentation of one real window, such as
+  negating, scaling, smoothing, cropping or masking it.
 - Not allowed: GIFT-Eval test data, other datasets, synthetic series, pretrained weights, and other
-  models' forecasts. Training on GEP-Val or GEP-Test series is allowed but voids those diagnostics.
-  Generated series are synthetic: series sampled from a process (such as KernelSynth or Gaussian
-  processes), mixed from several series (such as TSMixup), or produced by a recipe with fitted
-  constants, whose numbers could carry outside data.
+  models' forecasts. Synthetic means sampled from a process (KernelSynth), mixed from several series
+  (TSMixup), or generated with fitted constants. Training on GEP-Val or GEP-Test series is allowed
+  but voids those diagnostics.
 - No code but the evaluator may read GIFT-Eval data, at any step: building data, training or
   forecasting.
 - **Explain data changes.** If your data differs from the record's you build on, in selection,
@@ -95,11 +92,8 @@ see [submission](submission.md).
 Maintainers decide edge cases and record each ruling here, with its date and pull request, so the
 same question gets the same answer.
 
-- **Augmentation** (2026-11-20, #49): negating windows and averaging them over 2 to 4 steps during
-  training is simple augmentation, so it is allowed ([data](#data)). Generated series stay out.
-- **Test-time changes** (2026-11-20, #49): `forecast()` may change how it forecasts, for example
-  by averaging a forecast with the negated forecast of the negated series, or by clipping quantiles
-  at zero for nonnegative series, while the forecast interface stays the same. The report gives
-  each change's gain.
-- **No ensembles** (2026-11-20, #49): forecasts come from one trained model, not from combining
-  several.
+- **Augmentation** (2026-11-20, #49): negating windows and averaging them over 2 to 4 steps is
+  allowed.
+- **Test-time changes** (2026-11-20, #49): `forecast()` may change how it forecasts, such as
+  averaging over a sign flip or clipping quantiles at zero, if the interface stays the same.
+- **Ensembles** (2026-11-20, #49): not allowed; forecasts come from one trained model.
