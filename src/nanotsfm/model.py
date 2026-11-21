@@ -21,6 +21,9 @@ class ModelConfig:
     layers: int = 3  # causal time layers; one variate layer follows them
     heads: int = 4
     dropout: float = 0.0
+    # Forecast-time options; they change forecast(), never the weights or training.
+    flip_symmetric: bool = False  # average f(x) with -f(-x), quantile order reversed
+    clamp_positive: bool = False  # no quantile below 0 when the observed history is >= 0
 
     def __post_init__(self):
         for key in (
@@ -179,7 +182,27 @@ def load_checkpoint(path: Path, device="cpu"):
 
 @torch.inference_mode()
 def forecast(model, history: torch.Tensor, horizon: int, series_ids=None) -> torch.Tensor:
-    """Forecast [B,T] or [B,V,T] history, rolling out from median predictions if needed."""
+    """Forecast [B,T] or [B,V,T] history, rolling out from median predictions if needed.
+
+    With config.flip_symmetric the forecast is (f(x) - f(-x) with its quantiles reversed) / 2,
+    so negating the input exactly negates the forecast. With config.clamp_positive, series whose
+    observed history is nonnegative get no negative quantiles.
+    """
+    config = model.config
+    result = _forecast(model, history, horizon, series_ids)
+    if getattr(config, "flip_symmetric", False):
+        flipped = _forecast(model, -history, horizon, series_ids)
+        result = (result - flipped.flip(-1)) / 2
+    if getattr(config, "clamp_positive", False):
+        values = history.to(result.device, torch.float32)
+        observed = torch.isfinite(values)
+        lowest = torch.where(observed, values, float("inf")).amin(-1)
+        positive = (lowest >= 0) & observed.any(-1)
+        result = torch.where(positive[..., None, None], result.clamp_min(0), result)
+    return result
+
+
+def _forecast(model, history: torch.Tensor, horizon: int, series_ids=None) -> torch.Tensor:
     if history.ndim not in (2, 3) or history.shape[-1] == 0 or horizon <= 0:
         raise ValueError("Provide nonempty [B,T] or [B,V,T] history and a positive horizon")
     univariate = history.ndim == 2
