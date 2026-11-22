@@ -393,3 +393,23 @@ uv run --locked --extra gift python -m nanotsfm.data download GEP-L GEP-Val GEP-
 ./run.sh eval final-s7   # and final-s1, final-s2
 ./run.sh submit 2026-11-22_anannay-josh final-s7 final-s1 final-s2
 ```
+
+## References
+
+- Aksu, T. et al. (2024). GIFT-Eval: A Benchmark for General Time Series Forecasting Model
+  Evaluation. arXiv:2410.10393.
+- Khwaja et al. (2026). Toto 2.0. arXiv:2605.20119.
+- Das, A. et al. (2024). A decoder-only foundation model for time-series forecasting (TimesFM).
+  arXiv:2310.10688. TimesFM 2.5: https://huggingface.co/docs/transformers/model_doc/timesfm2_5
+- TinyCast (2026). arXiv:2608.15767.
+- Auer, A. et al. (2025). TiRex. arXiv:2505.23719.
+- Reverso (2026). arXiv:2602.17634.
+- Timer-S1 (2026). arXiv:2603.04791.
+- Lin, S. et al. (2024). SparseTSF. arXiv:2405.00946.
+- Li, X., Petropoulos, F. and Kang, Y. Improving forecasting by subsampling seasonal time series.
+  arXiv:2101.00827.
+- Liu, M. et al. SCINet. arXiv:2106.09305.
+- Zhang, T. et al. LightTS. arXiv:2207.01186.
+- FlowState (2025). arXiv:2508.05287.
+- Abel AI Lab. nanoTSFM and the Simons models. https://github.com/Abel-ai-lab/nanoTSFM
+- nanoTSFM records 2 (Shu-Wan), 3 (sahil-saahir) and 4 (anannay-josh), in `records/`.
