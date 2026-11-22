@@ -169,9 +169,9 @@ CRPS and MASE are relative to Seasonal Naive on GIFT-Eval, lower is better, mean
 
 | Run | Seed | GIFT-Eval CRPS | GIFT-Eval MASE | GEP-Val CRPS | Train s | Steps |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| final-s7 | 7 | {{S7_CRPS}} | {{S7_MASE}} | {{S7_VAL}} | {{S7_SEC}} | 8,000 |
-| final-s1 | 1 | {{S1_CRPS}} | {{S1_MASE}} | {{S1_VAL}} | {{S1_SEC}} | 8,000 |
-| final-s2 | 2 | {{S2_CRPS}} | {{S2_MASE}} | {{S2_VAL}} | {{S2_SEC}} | 8,000 |
+| final-s7 | 7 | {{S7_CRPS}} | {{S7_MASE}} | {{S7_VAL}} | {{S7_SEC}} | {{STEPS}} |
+| final-s1 | 1 | {{S1_CRPS}} | {{S1_MASE}} | {{S1_VAL}} | {{S1_SEC}} | {{STEPS}} |
+| final-s2 | 2 | {{S2_CRPS}} | {{S2_MASE}} | {{S2_VAL}} | {{S2_SEC}} | {{STEPS}} |
 | **Mean** | | **{{MEAN_CRPS}} ± {{SD_CRPS}}** | {{MEAN_MASE}} ± {{SD_MASE}} | {{MEAN_VAL}} ± {{SD_VAL}} | | |
 | Record 4, verified | | 0.5811 ± 0.0010 | 0.8508 ± 0.0020 | 0.6096 (reported) | 170 to 174 | 5,000 |
 
