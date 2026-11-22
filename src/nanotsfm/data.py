@@ -179,6 +179,8 @@ class Windows(Dataset):
         count: int,
         seed: int,
         power=0.0,
+        sign_flip=0.0,
+        downsample=0.0,
         augment: dict | None = None,
         channel_limit: int = 0,
         polyphase_share: float = 0.0,
@@ -186,7 +188,13 @@ class Windows(Dataset):
     ):
         """Draw a source with weight (its series count) ** power, then a series from it.
 
-        Power 0 weights sources equally, 1 weights every series equally.
+        Power 0 weights sources equally, 1 weights every series equally, above 1 favours sources
+        with many series.
+
+        sign_flip and downsample are record 4's augmentations, off at 0 and drawing no random
+        numbers then: with probability sign_flip a window is negated; with probability downsample
+        it is averaged over k = 2, 3 or 4 consecutive steps. They are kept for record 4's config
+        and can not be combined with the options below.
 
         These are for training data only. With augment, a map from names in AUGMENTATIONS to
         probabilities, each window is transformed on its own from the window's seeded generator.
@@ -200,7 +208,10 @@ class Windows(Dataset):
         augment's stride and block mean skip it.
         """
         self.context, self.horizon, self.count, self.seed = context, horizon, count, seed
+        self.sign_flip, self.downsample = sign_flip, downsample
         self.augment, self.channel_limit = augment or None, channel_limit
+        if (sign_flip or downsample) and (augment or channel_limit or polyphase_share):
+            raise ValueError("sign_flip and downsample exclude augment, channel_limit, polyphase")
         self.polyphase_share, self.polyphase_strides = polyphase_share, polyphase_strides
         self.dataset, self.values = dataset, arrays(dataset)
         sources = {}
@@ -233,27 +244,52 @@ class Windows(Dataset):
             else:
                 source = self.sources[rng.choice(len(self.sources), p=self.weights)]
             group = self.values[int(source[rng.integers(len(source))])]
-            thinned = False
-            if self.polyphase_share and rng.random() < self.polyphase_share:
-                stride = int(rng.choice(self.polyphase_strides))
-                # Every channel keeps the same phase, so variates stay aligned in time.
-                part = group[:, rng.integers(stride) :: stride]
-                if part.shape[1] > self.horizon:
-                    group, thinned = part, True
-            limit = min(group.shape[0], MAX_VARIATES)
-            if self.channel_limit:
-                limit = min(limit, int(rng.integers(1, self.channel_limit + 1)))
-            channels = np.sort(rng.choice(group.shape[0], limit, replace=False))
-            rate, phase, mean = 1, 0, False
-            if self.augment and not thinned:
-                full = self.context + self.horizon
-                rate, phase, mean = draw_coarsening(rng, self.augment, group.shape[1], full)
-            points = (group.shape[1] - phase) // rate
-            length = min(points, self.context + self.horizon)
-            start = int(rng.integers(points - length + 1))
-            window = coarse_points(group, channels, start, start + length, rate, phase, mean)
-            if self.augment:
-                window = apply_augment(window, rng, self.augment)
+            if self.sign_flip or self.downsample:  # record 4's path, kept exactly
+                channels = np.sort(
+                    rng.choice(
+                        group.shape[0],
+                        min(group.shape[0], MAX_VARIATES),
+                        replace=False,
+                    )
+                )
+                factor = 1
+                if self.downsample and rng.random() < self.downsample:
+                    factor = int(rng.integers(2, 5))
+                    if group.shape[1] // factor <= self.horizon:
+                        factor = 1
+                length = min(group.shape[1] // factor, self.context + self.horizon)
+                start = rng.integers(group.shape[1] - length * factor + 1)
+                window = np.array(group[channels, start : start + length * factor], copy=True)
+                if factor > 1:
+                    blocks = window.reshape(len(channels), length, factor)
+                    counts = np.isfinite(blocks).sum(-1)
+                    sums = np.where(np.isfinite(blocks), blocks, 0).sum(-1)
+                    with np.errstate(invalid="ignore", divide="ignore"):
+                        window = np.where(counts > 0, sums / counts, np.nan).astype("float32")
+                if self.sign_flip and rng.random() < self.sign_flip:
+                    window = -window
+            else:
+                thinned = False
+                if self.polyphase_share and rng.random() < self.polyphase_share:
+                    stride = int(rng.choice(self.polyphase_strides))
+                    # Every channel keeps the same phase, so variates stay aligned in time.
+                    part = group[:, rng.integers(stride) :: stride]
+                    if part.shape[1] > self.horizon:
+                        group, thinned = part, True
+                limit = min(group.shape[0], MAX_VARIATES)
+                if self.channel_limit:
+                    limit = min(limit, int(rng.integers(1, self.channel_limit + 1)))
+                channels = np.sort(rng.choice(group.shape[0], limit, replace=False))
+                rate, phase, mean = 1, 0, False
+                if self.augment and not thinned:
+                    full = self.context + self.horizon
+                    rate, phase, mean = draw_coarsening(rng, self.augment, group.shape[1], full)
+                points = (group.shape[1] - phase) // rate
+                length = min(points, self.context + self.horizon)
+                start = int(rng.integers(points - length + 1))
+                window = coarse_points(group, channels, start, start + length, rate, phase, mean)
+                if self.augment:
+                    window = apply_augment(window, rng, self.augment)
             cut = length - self.horizon
             if np.isfinite(window[:, :cut]).any() and np.isfinite(window[:, cut:]).any():
                 history = np.full((len(channels), self.context), np.nan, dtype="float32")

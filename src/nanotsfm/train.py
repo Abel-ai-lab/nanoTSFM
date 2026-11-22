@@ -43,6 +43,8 @@ LOG_EVERY = 25
 VALIDATION_WINDOWS = 1024
 # Optional training fields and their defaults, which reproduce the runs made before they existed.
 OPTIONAL = {
+    "sign_flip": 0.0,  # record 4: chance a window is negated; see data.Windows
+    "downsample": 0.0,  # record 4: chance a window is averaged over 2 to 4 steps
     "augment": None,  # e.g. {"sign_flip": 0.5}: chances per window; see data.AUGMENTATIONS
     "channel_limit": 0,  # each window keeps a uniform 1 to this many channels; 0 keeps them all
     "polyphase_share": 0.0,  # share of windows taken from every s-th point; see data.Windows
@@ -82,10 +84,14 @@ def load_config(path: Path):
     if not isinstance(settings["seed"], int) or settings["seed"] < 0:
         raise ValueError("seed must be a nonnegative integer")
     power = settings["source_power"]
-    if isinstance(power, bool) or not isinstance(power, (int, float)) or not 0 <= power <= 1:
-        raise ValueError("source_power must be a number from 0 to 1")
+    if isinstance(power, bool) or not isinstance(power, (int, float)) or not 0 <= power <= 2:
+        raise ValueError("source_power must be a number from 0 to 2")
     if not isinstance(settings["data"], str) or not settings["data"]:
         raise ValueError("data must name a dataset config or a local parquet folder")
+    for key in ("sign_flip", "downsample"):
+        value = option(settings, key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
+            raise ValueError(f"{key} must be a number from 0 to 1")
     augment = option(settings, "augment")
     if augment is not None and (
         not isinstance(augment, dict)
@@ -288,6 +294,8 @@ def train(
         settings["steps"] * batch_size,
         settings["seed"],
         settings["source_power"],
+        option(settings, "sign_flip"),
+        option(settings, "downsample"),
         option(settings, "augment"),
         option(settings, "channel_limit"),
         option(settings, "polyphase_share"),
