@@ -27,11 +27,11 @@ from nanotsfm.data import (
 )
 from nanotsfm.model import (
     QUANTILES,
+    ModelConfig,
     NanoTSFM,
     device_for,
     load_checkpoint,
     network_config,
-    read_config,
 )
 
 MASK_RATE_MAX = 0.4
@@ -41,10 +41,8 @@ WARMUP_FRACTION = 0.05
 FINAL_LR_FRACTION = 0.1
 LOG_EVERY = 25
 VALIDATION_WINDOWS = 1024
-# Optional training fields and their defaults, which reproduce the runs made before they existed.
+# More optional training fields and their defaults, which leave training as it was without them.
 OPTIONAL = {
-    "sign_flip": 0.0,  # record 4: chance a window is negated; see data.Windows
-    "downsample": 0.0,  # record 4: chance a window is averaged over 2 to 4 steps
     "augment": None,  # e.g. {"sign_flip": 0.5}: chances per window; see data.AUGMENTATIONS
     "channel_limit": 0,  # each window keeps a uniform 1 to this many channels; 0 keeps them all
     "polyphase_share": 0.0,  # share of windows taken from every s-th point; see data.Windows
@@ -60,7 +58,7 @@ def load_config(path: Path):
     config = yaml.safe_load(path.read_text())
     if not isinstance(config, dict) or set(config) != {"model", "training"}:
         raise ValueError("Config must contain exactly model and training sections")
-    model = read_config(config["model"])
+    model = ModelConfig(**config["model"])
     settings = config["training"]
     required = {
         "data",
@@ -73,8 +71,17 @@ def load_config(path: Path):
         "checkpoint_every",
         "source_power",
     }
-    if not required <= set(settings) <= required | set(OPTIONAL):
-        raise ValueError(f"Training fields must be {sorted(required)}, or {sorted(OPTIONAL)}")
+    optional = {"sign_flip": 0.0, "downsample": 0.0}  # augmentation probabilities, off by default
+    if not required <= set(settings) <= required | set(optional) | set(OPTIONAL):
+        raise ValueError(
+            f"Training fields must be {sorted(required)}, plus optionally "
+            f"{sorted(optional) + sorted(OPTIONAL)}"
+        )
+    settings = {**optional, **settings}
+    for key in optional:
+        value = settings[key]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
+            raise ValueError(f"{key} must be a number from 0 to 1")
     for key in ("steps", "batch_size", "checkpoint_every"):
         if not isinstance(settings[key], int) or settings[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
@@ -88,10 +95,6 @@ def load_config(path: Path):
         raise ValueError("source_power must be a number from 0 to 2")
     if not isinstance(settings["data"], str) or not settings["data"]:
         raise ValueError("data must name a dataset config or a local parquet folder")
-    for key in ("sign_flip", "downsample"):
-        value = option(settings, key)
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
-            raise ValueError(f"{key} must be a number from 0 to 1")
     augment = option(settings, "augment")
     if augment is not None and (
         not isinstance(augment, dict)
@@ -260,15 +263,10 @@ def train(
     checkpoint = None
     if resume:
         _, checkpoint = load_checkpoint(resume)
-        # Through read_config, so checkpoints saved before a field existed compare at its default.
-        saved_config = asdict(read_config(checkpoint["model_config"]))
-        if checkpoint["data"] != identity or saved_config != asdict(model_config):
+        if checkpoint["data"] != identity or checkpoint["model_config"] != asdict(model_config):
             raise ValueError("Resume requires identical data and model configuration")
         for field in ("steps", "batch_size", "learning_rate", "seed", "device"):
             if checkpoint["training"][field] != settings[field]:
-                raise ValueError(f"Cannot change {field} during resume")
-        for field in OPTIONAL:
-            if option(checkpoint["training"], field) != option(settings, field):
                 raise ValueError(f"Cannot change {field} during resume")
         model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
@@ -294,8 +292,8 @@ def train(
         settings["steps"] * batch_size,
         settings["seed"],
         settings["source_power"],
-        option(settings, "sign_flip"),
-        option(settings, "downsample"),
+        settings["sign_flip"],
+        settings["downsample"],
         option(settings, "augment"),
         option(settings, "channel_limit"),
         option(settings, "polyphase_share"),
@@ -327,9 +325,7 @@ def train(
         batches = []
     bf16 = device.type == "cuda" and torch.cuda.is_bf16_supported(including_emulation=False)
     autocast = torch.autocast("cuda", torch.bfloat16, enabled=bf16)
-    # The clock runs from the first batch's arrival, so that worker startup and the first read
-    # count as setup and data loading. Validation and saving are off it too.
-    started, paused = None, 0.0
+    started, paused = time.monotonic(), 0.0
     step, last_loss, windows_seen, validation = first_step, None, 0, None
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
@@ -340,8 +336,6 @@ def train(
 
     def elapsed():
         """Training seconds so far; validation and checkpoint saving are off the clock."""
-        if started is None:
-            return previous_seconds
         return previous_seconds + time.monotonic() - started - paused
 
     def save(seconds):
@@ -359,18 +353,12 @@ def train(
             healthy = False
             raise ValueError(f"Non-finite loss or gradient by step {step}")
 
-    interrupted = True  # until the training loop ends on its own
     try:
         with (output / "training.jsonl").open("w") as log:
             for history, target, series_ids in loader:
-                if started is None:
-                    started = time.monotonic()
                 if elapsed() >= settings["max_seconds"]:
                     break
-                # Joined after the transfer: a join on the CPU would leave pinned memory.
-                history = history.to(device, non_blocking=True)
-                target = target.to(device, non_blocking=True)
-                sequence = torch.cat([history, target], dim=-1)
+                sequence = torch.cat([history, target], dim=-1).to(device, non_blocking=True)
                 series_ids = series_ids.to(device, non_blocking=True)
                 for group in optimizer.param_groups:
                     group["lr"] = learning_rate(step, settings["steps"], settings["learning_rate"])
@@ -403,7 +391,6 @@ def train(
                     paused += time.monotonic() - pause
         if bool(nonfinite):
             raise ValueError(f"Non-finite gradient by step {step}")
-        interrupted = False
     finally:
         sync()
         seconds = elapsed()
@@ -412,11 +399,11 @@ def train(
         healthy = healthy and not bool(nonfinite)
         if healthy:
             save(seconds)
-        complete = step == settings["steps"] and not interrupted
+        status = "completed" if step == settings["steps"] else "partial"
         write_json(
             output / "run.json",
             {
-                "status": ("completed" if complete else "partial") if healthy else "failed",
+                "status": status if healthy else "failed",
                 "steps": step,
                 "steps_this_run": step - first_step,
                 "windows_this_run": windows_seen,

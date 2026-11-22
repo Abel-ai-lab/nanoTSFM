@@ -21,17 +21,6 @@ PERIOD_MIN_STRENGTH = 0.3  # autocorrelation at the period below which a series 
 PERIOD_MIN_POINTS = 64  # each phase keeps this many, two patches of the base model
 PHASE_SLOTS = 4  # TinyCast's K: a series can hold a daily and a weekly period together
 PHASE_ALPHA = 0.05  # TinyCast's Fisher test level, Bonferroni-corrected across bins
-# Fields that checkpoints from before the submission's trim may hold, at the only values this code
-# reproduces: each was off there.
-LEGACY_FIELDS = {
-    "infer_sign_flip": False,
-    "infer_temperature": INFER_TEMPERATURE,
-    "infer_backtest": INFER_BACKTEST,
-    "forecast_clamp": None,
-    "combiner": "mean",
-}
-
-
 LIST_FIELDS = ("infer_candidates", "polyphase_forecast_strides")
 
 
@@ -103,15 +92,6 @@ class ModelConfig:
             raise ValueError("polyphase_forecast_period falls back on polyphase_forecast_strides")
         if type(self.phase_tokens) is not bool:
             raise ValueError("phase_tokens must be true or false")
-
-
-def read_config(fields: dict) -> ModelConfig:
-    """The ModelConfig of a checkpoint's fields, dropping LEGACY_FIELDS at their old values."""
-    fields = dict(fields)
-    for key, value in LEGACY_FIELDS.items():
-        if key in fields and fields.pop(key) != value:
-            raise ValueError(f"This code forecasts only with {key} = {value!r}")
-    return ModelConfig(**fields)
 
 
 def network_config(config: ModelConfig) -> ModelConfig:
@@ -392,7 +372,7 @@ def load_checkpoint(path: Path, device="cpu"):
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     if checkpoint.get("format_version") != 3:
         raise ValueError("Unsupported checkpoint version")
-    model = NanoTSFM(read_config(checkpoint["model_config"]))
+    model = NanoTSFM(ModelConfig(**checkpoint["model_config"]))
     model.load_state_dict(checkpoint["model"])
     if model.config.polyphase_forecast_strides:
         model = Polyphase(model)
@@ -402,15 +382,14 @@ def load_checkpoint(path: Path, device="cpu"):
 
 def rollout(model, history: torch.Tensor, horizon: int, series_ids: torch.Tensor) -> torch.Tensor:
     """Feed medians back past one model pass."""
-    context, patch = model.config.context_length, model.config.patch_length
+    context = model.config.context_length
     blocks = []
     remaining = horizon
     while remaining:
         prediction = model(history[..., -context:], series_ids)
         take = min(remaining, prediction.shape[-2])
         blocks.append(prediction[..., :take, :])
-        history = torch.cat([history, prediction[..., 4]], dim=-1)
-        history = history[..., -(min(context, history.shape[-1]) // patch * patch) :]
+        history = torch.cat([history, prediction[..., 4]], dim=-1)[..., -context:]
         remaining -= take
     return torch.cat(blocks, dim=-2)
 
@@ -489,7 +468,7 @@ def views_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
     flipped = signed_forecast(model, history, horizon, series_ids)
     observed = history.isfinite()
     nonneg = observed.any(-1) & torch.where(observed, history >= 0, True).all(-1)  # [B,V]
-    members = [native, flipped]
+    passes = [native, flipped]
     rows = nonneg.any(-1)
     if rows.any():
         root = torch.where(observed[rows], history[rows].clamp_min(0).sqrt(), torch.nan)
@@ -501,10 +480,10 @@ def views_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
         for view, fallback in views:
             full = fallback.clone()
             full[rows] = torch.where(keep, view.sign() * view.square(), fallback[rows])
-            members.append(full)
+            passes.append(full)
     else:
-        members += [native, flipped]
-    ordered = torch.stack([member.sort(-1).values for member in members]).sort(0).values
+        passes += [native, flipped]
+    ordered = torch.stack([each.sort(-1).values for each in passes]).sort(0).values
     return ordered[1:3].mean(0)
 
 
