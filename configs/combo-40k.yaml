@@ -1,0 +1,22 @@
+model:
+  context_length: 1024
+  prediction_length: 512
+  patch_length: 32
+  width: 256
+  layers: 3
+  heads: 4
+  dropout: 0.0
+  flip_symmetric: true  # average with the negated series' forecast
+  clamp_positive: true  # no negative quantiles for nonnegative histories
+training:
+  data: GEP-L
+  steps: 40000
+  batch_size: 256
+  learning_rate: 0.001
+  seed: 7
+  device: auto
+  max_seconds: 3600
+  checkpoint_every: 1000
+  source_power: 1
+  sign_flip: 0.5
+  downsample: 0.3
