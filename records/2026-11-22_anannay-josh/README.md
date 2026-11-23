@@ -256,9 +256,10 @@ The augmentation ablation, each against all six, 3 seeds:
 | + 6 layers | 0.5641 ± 0.0018 | 25,000 |
 | Five 13M models with augmentation, polyphase, phase tokens, gate (an ensemble, not allowed) | 0.5259 ± 0.0006 | 40,000 |
 | One of them, gate only, seed 7 | 0.5302 | 8,000 |
-| **One of them, full forecast: this submission, local** | **0.5195 ± 0.0015** | 8,000 |
+| One of them, full development forecast with the gate | 0.5195 ± 0.0015 | 8,000 |
+| **The same without the gate: this submission (development seed 7)** | **0.5308** | 8,000 |
 
-One model with the full forecast beats five without it. Five models were worth −0.0145 early on and
+One model with the full development forecast beat five without it. Five models were worth −0.0145 early on and
 about −0.006 at the end (0.5224 ± 0.0007 against 0.5280 ± 0.0020, both with the tail floor).
 
 Full GIFT-Eval grades that lost, 3 seeds, against record 2's config at 0.6297 ± 0.0043:
@@ -309,9 +310,11 @@ different idea that we trust least: −0.013 on GIFT-Eval, nothing on held-out s
 Either GIFT-Eval has more of the strongly seasonal 10-second series it helps, or it fits the
 benchmark. With no ruling on it, we submit without it.
 
-**Where it helps and hurts.** Against record 4 every horizon and frequency improves. The largest
-gains are on 10-second data (1.277 to 0.659, now better than Seasonal Naive) and on medium and long
-horizons (0.592 to 0.511, 0.585 to 0.497). Monthly, quarterly and yearly data gain least.
+**Where it helps and hurts** (development runs with the gate). Against record 4 every horizon and
+frequency improves. The largest gains are on medium and long horizons (0.592 to 0.511, 0.585 to
+0.497) and on 10-second data (1.277 to 0.659). Most of the 10-second gain came from the gate (0.875
+without it, seed 7), so the submission gains less there. Monthly, quarterly and yearly data gain
+least.
 
 **Limitations.**
 
