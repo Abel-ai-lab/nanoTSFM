@@ -12,10 +12,6 @@ model:
   polyphase_forecast_weight: 0.25
   phase_tokens: true
   polyphase_forecast_period: true
-  infer_candidates:
-  - deseason
-  infer_min_season: 0.7
-  infer_margin: 0.3
   infer_clamp: 1.0
   infer_tail_floor: true
   infer_views: true

@@ -10,9 +10,6 @@ from nanotsfm.data import MAX_VARIATES, pack_windows
 
 QUANTILES = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 MIN_SCALE = 1e-5
-INFER_CANDIDATES = ("deseason",)
-INFER_TEMPERATURE = 0.1  # softmax over the candidates' relative backtest loss
-INFER_BACKTEST = 0.25  # least share of the context the backtest holds back
 POLYPHASE_MIN_PATCHES = 2  # a stride joins a series' forecast if each phase has this much history
 PERIOD_TARGET = 24  # the points of its main cycle a period-locked stride leaves a series
 PERIOD_STRIDES = (2, 12)  # the least and most such a stride can be
@@ -21,7 +18,7 @@ PERIOD_MIN_STRENGTH = 0.3  # autocorrelation at the period below which a series 
 PERIOD_MIN_POINTS = 64  # each phase keeps this many, two patches of the base model
 PHASE_SLOTS = 4  # TinyCast's K: a series can hold a daily and a weekly period together
 PHASE_ALPHA = 0.05  # TinyCast's Fisher test level, Bonferroni-corrected across bins
-LIST_FIELDS = ("infer_candidates", "polyphase_forecast_strides")
+LIST_FIELDS = ("polyphase_forecast_strides",)
 
 
 @dataclass(frozen=True)
@@ -34,9 +31,6 @@ class ModelConfig:
     heads: int = 4
     dropout: float = 0.0
     # Inference only; the defaults leave forecasts unchanged. See `forecast`.
-    infer_candidates: tuple = ()  # from INFER_CANDIDATES, gated by a backtest on the context
-    infer_margin: float = 0.1  # relative backtest gain a candidate needs to beat the model
-    infer_min_season: float = 0.0  # autocorrelation at the period that opens the candidates
     infer_clamp: float = 0.0  # keep quantiles within this many context ranges of the context
     # The interlaced forecast; see Polyphase. Forecast only, so it can re-score a checkpoint.
     polyphase_forecast_strides: tuple = ()  # strides whose phases are forecast and interlaced
@@ -56,10 +50,8 @@ class ModelConfig:
         # Lists, as config.json holds them, so that asdict(config) equals the recorded config.
         for key in LIST_FIELDS:
             object.__setattr__(self, key, list(getattr(self, key)))
-        if set(self.infer_candidates) - set(INFER_CANDIDATES):
-            raise ValueError(f"infer_candidates must come from {INFER_CANDIDATES}")
-        if self.infer_margin < 0 or self.infer_clamp < 0:
-            raise ValueError("infer_margin and infer_clamp must be >= 0")
+        if self.infer_clamp < 0:
+            raise ValueError("infer_clamp must be >= 0")
         for key in (
             "context_length",
             "prediction_length",
@@ -437,24 +429,6 @@ def channel_strides(history: torch.Tensor):
     return torch.where(clear, torch.minimum(stride, room), 0), strength
 
 
-def seasonal_profile(filled: torch.Tensor, period: torch.Tensor, horizon: int):
-    """Each series' mean cycle, zero-centered, over the history and over the horizon."""
-    length = filled.shape[-1]
-    steps = torch.arange(length + horizon, device=filled.device)
-    phase = (length - 1 - steps) % period[..., None]
-    past = phase[..., :length]
-    observed = filled.isfinite().to(filled.dtype)
-    width = int(period.max())
-    total = torch.zeros(*filled.shape[:-1], width, device=filled.device, dtype=filled.dtype)
-    count = total.clone()
-    total.scatter_add_(-1, past, filled.nan_to_num(0.0) * observed)
-    count.scatter_add_(-1, past, observed)
-    mean = total / count.clamp_min(1)
-    mean = mean - mean.sum(-1, keepdim=True) / (count > 0).sum(-1, keepdim=True).clamp_min(1)
-    profile = mean.gather(-1, phase)
-    return profile[..., :length], profile[..., length:]
-
-
 def signed_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
     """The forecast of -x, mapped back: q_t(x) = -q_{1-t}(-x)."""
     return -rollout(model, -history, horizon, series_ids).flip(-1)
@@ -497,48 +471,6 @@ def model_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
     return rollout(model, history, horizon, series_ids)
 
 
-def candidate_forecasts(model, history, horizon: int, series_ids, period, base=None):
-    """Every configured forecast, [candidates,B,V,H,9]; the model itself comes first."""
-    if base is None:
-        base = model_forecast(model, history, horizon, series_ids)
-    forecasts = [base]
-    filled = forward_fill(history)
-    for _ in model.config.infer_candidates:  # "deseason", the only candidate
-        past, future = seasonal_profile(filled, period, horizon)
-        residual = rollout(model, history - past, horizon, series_ids)
-        forecasts.append(residual + future[..., None])
-    return torch.stack(forecasts)
-
-
-def backtest_scores(model, history, horizon: int, series_ids, period) -> torch.Tensor:
-    """Pinball loss of each candidate on the end of each series' own context, [candidates,B,V].
-
-    Each series holds back min(max(horizon, C/4), C/2, half its observed length) points. A series
-    with fewer than one patch to spare scores 0 everywhere, which keeps the model."""
-    context, patch = model.config.context_length, model.config.patch_length
-    lengths = history.isfinite().cumsum(-1).clamp_max(1).sum(-1)
-    held = min(max(horizon, int(context * INFER_BACKTEST)), context // 2)
-    held = (lengths // 2).clamp_max(held)
-    held = torch.where(held >= patch, held, 0)
-    longest = int(held.max())
-    if not longest:
-        return torch.zeros(1 + len(model.config.infer_candidates), *history.shape[:2])
-    length = history.shape[-1]
-    steps = torch.arange(length, device=history.device)
-    origin = steps - held[..., None]
-    past = history.gather(-1, origin.clamp_min(0))
-    past = torch.where(origin >= 0, past, torch.nan)
-    target_steps = length - held[..., None] + torch.arange(longest, device=history.device)
-    target = history.gather(-1, target_steps.clamp_max(length - 1))
-    target = torch.where(target_steps < length, target, torch.nan)
-    predictions = candidate_forecasts(model, past, longest, series_ids, period)
-    levels = torch.tensor(QUANTILES, device=history.device, dtype=torch.float64)
-    # Double, so that series near the float32 limit cannot overflow the loss into NaN weights.
-    error = target[None, ..., None].double() - predictions.double()
-    loss = torch.maximum(levels * error, (levels - 1) * error).nan_to_num(0.0).sum(-1)
-    return loss.sum(-1) / target.isfinite().sum(-1).clamp_min(1)
-
-
 def floor_tail(result: torch.Tensor, cycle: torch.Tensor, first: int) -> torch.Tensor:
     """result [...,H,9] with its bands past the first model pass held at least as wide as they were
     at the same phase of the pass's last cycle; `cycle` [...] is each series' whole period, or 1.
@@ -560,30 +492,10 @@ def floor_tail(result: torch.Tensor, cycle: torch.Tensor, first: int) -> torch.T
     return torch.cat([result[..., :first, :], result[..., first:, 4:5] + wider], dim=-2)
 
 
-def gated_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
-    """Weight the candidates per series by their backtest loss, then clamp to the context."""
+def infer_forecast(model, history, horizon: int, series_ids) -> torch.Tensor:
+    """The model's forecast with the infer_* steps: views, tail floor, clamp, sign clip, snap."""
     config = model.config
     result = model_forecast(model, history, horizon, series_ids)
-    if config.infer_candidates:
-        filled = forward_fill(history)
-        period, strength = infer_period(filled, filled.isfinite().sum(-1))
-        # Candidates cost model passes and add noise, so only clearly seasonal series get them.
-        allowed = strength >= config.infer_min_season
-        rows = allowed.any(-1)
-        if rows.any():
-            arguments = history[rows], horizon, series_ids[rows], period[rows]
-            forecasts = candidate_forecasts(model, *arguments, base=result[rows])
-            scores = backtest_scores(model, *arguments).to(forecasts.device)
-            relative = scores / scores.amin(0).clamp_min(MIN_SCALE)
-            relative[1:] += config.infer_margin
-            shut = (scores == 0).all(0) | ~allowed[rows]  # no backtest, or no clear season
-            relative[1:] = torch.where(shut, torch.inf, relative[1:])
-            weights = (-relative / INFER_TEMPERATURE).softmax(0)
-            forecasts = torch.where(forecasts.isfinite(), forecasts, forecasts[:1])
-            blend = weights[..., None, None].to(forecasts.dtype) * forecasts
-            blend = blend.sum(0).sort(-1).values
-            result = result.clone()
-            result[rows] = blend
     if config.infer_tail_floor and horizon > config.prediction_length:
         filled = forward_fill(history)
         cycle, clear = infer_period(filled, filled.isfinite().sum(-1))
@@ -658,15 +570,14 @@ def _forecast(model, history: torch.Tensor, horizon: int, series_ids=None) -> to
     model.eval()
     config = model.config
     tricks = (
-        config.infer_candidates
-        or config.infer_clamp
+        config.infer_clamp
         or config.infer_tail_floor
         or config.infer_views
         or config.infer_sign_clip
         or config.infer_integer_snap
     )
     try:
-        predict = gated_forecast if tricks else rollout
+        predict = infer_forecast if tricks else rollout
         result = predict(model, history, horizon, series_ids)
         return result[:, 0] if univariate else result
     finally:
