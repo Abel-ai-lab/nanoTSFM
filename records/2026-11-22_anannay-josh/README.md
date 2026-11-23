@@ -1,6 +1,6 @@
 ---
 team: anannay-josh
-description: One 13M model on GEP-L, more augmentations of real windows, polyphase views and heads, phase tokens, a backtest deseason gate and forecast views
+description: One 13M model on GEP-L, more augmentations of real windows, polyphase views and heads, phase tokens and forecast views
 members:
   - name: Anannay Sharma
     github: Anannay16
@@ -27,9 +27,7 @@ of the 3,600. We expected both ideas to go further, and a larger model on more d
    shows a rate or a shape the corpus has little of.
 2. **More data and a larger model.** GEP-L with a 13M model (width 384, 6 layers) at 8,000 steps.
 3. **The same views at forecast time.** One set of weights forecasts the history, its negation,
-   its square root, and every 2nd and 4th point of it, and the forecasts are combined. A series
-   with a strong cycle is also forecast with its mean cycle removed, if that wins a backtest on the
-   series' own history.
+   its square root, and every 2nd and 4th point of it, and the forecasts are combined.
 
 The ablation gives each forecast-time step its own GIFT-Eval gain on the same weights, and each
 training choice a paired 3-seed test on held-out GIFT-Eval Pretrain sources.
@@ -104,17 +102,13 @@ views contain the flipped forecast, and the sign clip contains the clamp.
   and blends them into its normal forecast at weight 0.25. The stride-4 pass reads 4,096 points, so
   the forecast sees four times the network's context. With `polyphase_forecast_period`, a series
   with a clear cycle uses one stride picked from its own period, so the cycle lands near 24 points.
-- **Deseason gate** (`infer_candidates: [deseason]`). For a series whose autocorrelation at its
-  detected period is at least 0.7, a second candidate is built: the series' mean cycle (the mean of
-  its own history at each phase of the period) is subtracted, the model forecasts what is left, and
-  the mean cycle, repeated over the horizon, is added back. **That added part is a seasonal-mean
-  extrapolation, not a model output.** It has no trained parameters and no setting tied to a
-  dataset or frequency. Both candidates are then backtested on the end of the series' own context
-  (between a quarter and a half of it), the candidate's relative pinball loss is raised by a margin
-  of 0.3, and the two are blended with softmax weights at temperature 0.1, so the candidate counts
-  only where it clearly wins. The period is found on the whole context, which makes the inner
-  backtest a little optimistic; nothing past the context is read. An older version also had a
-  Seasonal Naive candidate, which we removed as another model's forecast.
+- **Not submitted: a deseason gate.** During development the forecast also had a gate: for a
+  series with a strong cycle (autocorrelation at least 0.7 at its period), the model forecast the
+  series with its own mean cycle removed, the mean cycle was added back over the horizon, and a
+  backtest on the series' own history chose between that and the plain forecast. The added mean
+  cycle is a seasonal-mean extrapolation, not a model output, and the gate has no ruling, so we left
+  it out; its code is removed. It was worth −0.0130 on GIFT-Eval (seed 7, local) and nothing on
+  held-out sources (+0.0006), and it was chosen on GIFT-Eval. We report it as an ablation only.
 - **Context clamp** (`infer_clamp: 1`). Quantiles are kept within one context range above the
   context's maximum and below its minimum, as `docs/directions.md` suggests.
 - **Views** (`infer_views`). Over the first 512 steps, per quantile, the mean of the middle two of
@@ -128,14 +122,14 @@ views contain the flipped forecast, and the sign clip contains the clamp.
   negative gets no negative forecasts, and one never positive no positive ones. A never-negative
   history of whole numbers gets whole-number forecasts.
 
-**Forecast cost.** These steps need many model passes per series. On the A100, forecasting and
-scoring the 97 tasks took {{EVAL_MIN}} minutes per run, with {{EVAL_VRAM_GB}} GB of GPU memory and
-{{EVAL_RAM_GB}} GB of RAM at the peak; evaluation needs a GPU. Locally (RTX 5070 Ti) forecasting
-took 56 to 58 minutes per run: 1 minute for one plain pass, about 16 more for the polyphase heads,
-the gate and the tail floor, and about 39 more for views.
+**Forecast cost.** These steps need many model passes per series; evaluation needs a GPU. On the
+RTX 5070 Ti that ran the final runs, forecasting and scoring the 97 tasks took {{LOCAL_EVAL_MIN}}
+minutes per run, most of it for views (about 39 minutes during development).
 
 **Seeds and hardware.** Final runs: seeds 7, 1 and 2 at commit `{{COMMIT}}`, each on one
-{{GPU}}. Training took {{SEC_RANGE}} seconds per run. All development ran on one RTX 5070 Ti.
+{{GPU}}, not an A100; the rules allow other hardware and say such runs may be re-timed. Training
+took {{SEC_RANGE}} seconds per run, far under the 3,600-second cap. All development ran on the
+same GPU.
 
 **Choosing the final model.** The benchmark is public, so here is how much we looked at it.
 
@@ -151,8 +145,8 @@ the gate and the tail floor, and about 39 more for views.
   polyphase, the channel limit, phase tokens, size, steps and learning rate were chosen on it, and
   views, the tail floor, the sign clip and the integer snap each passed a 3-seed test on it before
   their GIFT-Eval grade.
-- The gate is the exception: about nothing on held-out sources (+0.0006), −0.013 on GIFT-Eval. It
-  is in the model on GIFT-Eval evidence alone.
+- The gate was the exception: about nothing on held-out sources (+0.0006), −0.013 on GIFT-Eval.
+  It had only GIFT-Eval evidence and no ruling, so it is not in the submission.
 - Most development used an ensemble of five such models in one hour. Several models were ruled an
   ensemble (#49), so this is one model, and the ensemble is reported only as history.
 
@@ -177,13 +171,13 @@ CRPS and MASE are relative to Seasonal Naive on GIFT-Eval, lower is better, mean
 
 The mean is {{GAP_R4}} below record 4's verified 0.5811, against a required margin of 0.013.
 
-Everything below this line ran **locally on one RTX 5070 Ti**, not on an A100, at development
-commits. The one-model rows are the first model of each development ensemble run, which trains
-first and with the run's seed as a single run does, graded alone. They scored 0.5178, 0.5206 and
-0.5202 (0.5195 ± 0.0015, MASE 0.760) after 238 to 265 seconds of training.
+Everything below this line ran at development commits on the same RTX 5070 Ti. The one-model rows
+are the first model of each development ensemble run, which trains first and with the run's seed
+as a single run does, graded alone. With the gate they scored 0.5178, 0.5206 and 0.5202 (0.5195 ±
+0.0015, MASE 0.760); without it, seed 7 scored 0.5308.
 
 **By horizon and frequency** (geometric mean of relative CRPS over the tasks in each group, mean of
-3 seeds; record 4's numbers are from its report, ours are the local runs):
+3 seeds; record 4's numbers are from its report, ours are the development runs with the gate):
 
 | Group | Tasks | Record 4 | This model, local |
 | --- | ---: | ---: | ---: |
@@ -199,13 +193,14 @@ first and with the run's seed as a single run does, graded alone. They scored 0.
 
 ### Ablation: each forecast-time step (same weights)
 
-Local, seed 7, GIFT-Eval. Each row removes one step from the full forecast (0.5178). The held-out
-column is the step's own paired test on held-out Pretrain sources, 3 seeds. Negative is better.
+Local, seed 7, GIFT-Eval. Each row removes one step from the development forecast, which included
+the gate (0.5178); this submission is the "without the deseason gate" row. The held-out column is
+the step's own paired test on held-out Pretrain sources, 3 seeds. Negative is better.
 
 | Forecast | GIFT-Eval CRPS | MASE | Step's gain | Held-out, 3 seeds |
 | --- | ---: | ---: | ---: | ---: |
-| **Full forecast (this submission)** | **0.5178** | 0.759 | | |
-| without the deseason gate | 0.5308 | 0.784 | −0.0130 | +0.0006 |
+| Development forecast, with the gate | 0.5178 | 0.759 | | |
+| **without the deseason gate (this submission)** | **0.5308** | 0.784 | −0.0130 | +0.0006 |
 | without views | 0.5236 | 0.766 | −0.0058 | −0.0091 |
 | tail floor, added alone to the gate-only forecast (0.5302 to 0.5267) | | | −0.0035 | −0.0049 |
 | without sign clip and integer snap | 0.5193 | 0.761 | −0.0015 | −0.0029 |
@@ -214,16 +209,8 @@ column is the step's own paired test on held-out Pretrain sources, 3 seeds. Nega
 | One plain pass: no heads, gate, views, floor, clip or snap (clamp on) | 0.5479 | 0.795 | −0.0301 for all of them | |
 | One plain pass with record 4's two options (flip average, clip at 0) | 0.5395 | 0.783 | | |
 
-The same on the A100 runs, 3 seeds:
-
-| Forecast | s7 | s1 | s2 | Mean ± sd |
-| --- | ---: | ---: | ---: | ---: |
-| Full forecast | {{S7_CRPS}} | {{S1_CRPS}} | {{S2_CRPS}} | {{MEAN_CRPS}} ± {{SD_CRPS}} |
-| Gate off | {{NOGATE_S7}} | {{NOGATE_S1}} | {{NOGATE_S2}} | {{NOGATE_MEAN}} ± {{NOGATE_SD}} |
-| One plain pass, every forecast-time step off | {{ONEPASS_S7}} | {{ONEPASS_S1}} | {{ONEPASS_S2}} | {{ONEPASS_MEAN}} ± {{ONEPASS_SD}} |
-
-So the weights alone, with one pass and no gate, already score {{ONEPASS_MEAN}} (0.548 locally),
-below record 4, and the forecast-time steps add the rest. The tail floor also gained −0.0036,
+So the weights alone, with one plain pass, already score 0.548 (seed 7), below record 4, and the
+forecast-time steps add the rest. The tail floor also gained −0.0036,
 −0.0035 and −0.0035 over three seeds with the development ensemble. Averaging with the negated
 forecast alone (record 4's `flip_symmetric`) took 0.5267 to 0.5228; views include it.
 
@@ -307,9 +294,8 @@ predict, or how it is built, mostly did not.
 1. **Augmentation, −0.0390 on held-out sources.** Sign flip carries the most (+0.0208 without it),
    then resampling (+0.0228) and time reversal (+0.0101). Record 4 found the same on GIFT-Eval
    (−0.033 from sign flip and block means). The corpus has many long, one-directional series.
-2. **The forecast-time steps, −0.0301 on GIFT-Eval** (0.5479 to 0.5178, seed 7, local). The gate
-   is the largest (−0.0130), then views (−0.0058), the tail floor (−0.0035) and the clip and snap
-   (−0.0015).
+2. **The forecast-time steps** (seed 7, local): views −0.0058, the tail floor −0.0035 and the clip
+   and snap −0.0015. The gate we left out was larger (−0.0130).
 3. **GEP-L at power 0.5, −0.0206 on held-out sources.**
 4. **Polyphase windows and heads, −0.0148 on held-out sources.** Windows alone did little
    (0.6267 on GIFT-Eval for a 3.3M model). The gain came when the forecast also read every 2nd
@@ -318,10 +304,10 @@ predict, or how it is built, mostly did not.
 
 **Did the results support the hypothesis?** Mostly. More views of real data in training was the
 largest step on held-out sources, and size and data each added some. At forecast time the views
-helped as record 4's flip did. The largest forecast-time gain, though, is the gate, which is a
-different idea, and it is the part we trust least: −0.013 on GIFT-Eval, nothing on held-out
-sources or GEP-Val. Either GIFT-Eval has more of the strongly seasonal 10-second series it helps,
-or it fits the benchmark. Without it the model scores {{NOGATE_MEAN}} (0.5308 locally, seed 7).
+helped as record 4's flip did. The largest forecast-time gain in development was the gate, a
+different idea that we trust least: −0.013 on GIFT-Eval, nothing on held-out sources or GEP-Val.
+Either GIFT-Eval has more of the strongly seasonal 10-second series it helps, or it fits the
+benchmark. With no ruling on it, we submit without it.
 
 **Where it helps and hurts.** Against record 4 every horizon and frequency improves. The largest
 gains are on 10-second data (1.277 to 0.659, now better than Seasonal Naive) and on medium and long
@@ -333,18 +319,15 @@ horizons (0.592 to 0.511, 0.585 to 0.497). Monthly, quarterly and yearly data ga
   (0.6429 and 0.6432, 4 seeds), 22M did not beat 13M, and more series of the same sources did not
   help. So this model uses about a tenth of the hour. Why the score stops improving with compute
   is the open question we did not answer.
-- The gate, the slice, the source power and the final pick looked at GIFT-Eval.
+- The slice, the source power and the final pick looked at GIFT-Eval (the gate did too, and is out).
 - The training choices have held-out deltas, mostly on 3.3M models, and no GIFT-Eval grades of
   their own. The local forecast-time grades are seed 7 only.
 - Time reversal has no ruling (see Data).
 - Forecasting takes far longer than the baseline's 5 minutes (see Forecast cost).
-- The gate has a known flaw. Its backtest is at least 1,024 steps long whatever the horizon, so on
-  `bizitobs_l2c` at 5 minutes it picks the deseasoned forecast for a 48-step task, and the first
-  step jumps away from the last value. We saw this on GIFT-Eval windows, tested the fix
-  (backtesting at the task's horizon) on held-out sources, and it scored +0.0001, so it is not in.
+- Leaving the gate out costs about 0.013 on GIFT-Eval; a ruling on it could restore that.
 
-Next we would look for new kinds of real data rather than more steps, and for a gate that earns
-its place on held-out sources.
+Next we would look for new kinds of real data rather than more steps, and for a seasonal step that
+earns its place on held-out sources and has a ruling.
 
 ## Contributions and attribution
 
@@ -372,7 +355,7 @@ its place on held-out sources.
     [FlowState](https://arxiv.org/abs/2508.05287). Random-phase windows at strides 2 and 4 in
     training, blended with interlaced forecasts, are our own combination as far as we found.
   - Removing the season before forecasting is a standard idea from classical decomposition; the
-    backtest gate is ours.
+    backtest gate (not in this submission) is ours.
   - Views, sign clip and integer snap follow the Simons models cross-posted in the nanoTSFM
     README. Averaging with the negated series' forecast, and the clamp at zero, are record 4's,
     from [TimesFM 2.5](https://huggingface.co/docs/transformers/model_doc/timesfm2_5).
