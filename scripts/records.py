@@ -53,6 +53,7 @@ NEWS = (
 OURS = {
     "Simons-297M": {"mase": 0.673, "crps": 0.457, "parameters": 297_230_368},
 }
+LEADERBOARD = "https://huggingface.co/spaces/Salesforce/GIFT-Eval"
 # (text, link, Simple Icons logo and its color)
 LINKS = [
     ("Code", REPO, "github/F4F5F1"),
@@ -105,6 +106,7 @@ MATH = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1
   crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.spec'),
   {delimiters: [{left: '$', right: '$', display: false}], throwOnError: false})"></script>"""
 RULE = "Each record is the mean of its runs, retrained by the maintainers before it counts."
+PAGE = 5  # records a page in the records table, newest first
 FOOTNOTE = """Gray points and dashed lines mark published models on the GIFT-Eval leaderboard. In
 the two panels by metric, each small gray dot is one verified run and the orange line is the
 record, the mean of its runs. Records are decided on CRPS. Numbers are records, as in the table
@@ -132,7 +134,7 @@ a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outl
 .band h1 {{ margin: 0; color: #F4F5F1; font-size: 44px; font-weight: 600; line-height: 1.1; }}
 .band p {{ margin: 12px 0 24px; font-size: 18px; max-width: 60ch; }}
 .band .latest {{ margin: 20px 0 0; font-size: 14px; max-width: none; }}
-.band .latest a, .band .latest b {{ color: #F4F5F1; }}
+.band p a, .band .latest b {{ color: #F4F5F1; }}
 .news {{ display: inline-flex; align-items: center; gap: 10px; max-width: 100%; margin-bottom: 24px;
   color: #C9D3DC; font-size: 14px; line-height: 1.45; text-decoration: none;
   border: 1px solid #2B5A60; border-radius: 18px; padding: 5px 14px 5px 5px; }}
@@ -196,6 +198,13 @@ th {{ text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; 
 th, td {{ padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }}
 td.n {{ font-family: "IBM Plex Mono", Menlo, monospace; font-variant-numeric: tabular-nums;
   white-space: nowrap; }}
+.pager {{ display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 10px; color: var(--muted); font-size: 14px; }}
+.pager button {{ font: inherit; color: var(--ink); background: none; cursor: pointer;
+  border: 1px solid var(--rule); border-radius: 6px; padding: 4px 12px; }}
+.pager button:hover:enabled {{ border-color: var(--muted); }}
+.pager button:disabled {{ color: var(--muted); opacity: 0.5; cursor: default; }}
+.pager button:focus-visible {{ outline: 2px solid var(--accent); outline-offset: 3px; }}
 details {{ border-top: 1px solid var(--rule); padding: 10px 0; }}
 details:last-of-type {{ border-bottom: 1px solid var(--rule); }}
 summary {{ cursor: pointer; color: var(--ink); }}
@@ -213,7 +222,7 @@ summary {{ cursor: pointer; color: var(--ink); }}
   .records, .records tbody {{ display: block; }}
   .records tr {{ display: flex; flex-wrap: wrap; gap: 2px 14px; padding: 10px 0;
     border-bottom: 1px solid var(--rule); }}
-  .records tr:first-child {{ display: none; }}
+  .records tr:first-child, .records tr[hidden] {{ display: none; }}
   .records td {{ border: 0; padding: 0; }}
   .records td:nth-child(2) {{ order: 1; }}
   .records td:nth-child(3) {{ flex: 1 0 80%; color: var(--ink); }}
@@ -323,6 +332,25 @@ for (const link of document.querySelectorAll('a[href^="#record-"]')) {
   link.addEventListener("click", () => openRecord(link.hash));
 }
 openRecord(location.hash);
+// The records table shows a page of records at a time, newest first.
+const pager = document.querySelector(".pager");
+if (pager) {
+  const rows = [...document.querySelectorAll(".records tr[data-page]")];
+  const [newer, status, older] = pager.children;
+  const last = Math.max(...rows.map((row) => Number(row.dataset.page)));
+  let page = 0;
+  function turn(to) {
+    page = to;
+    for (const row of rows) row.hidden = Number(row.dataset.page) !== page;
+    const shown = rows.filter((row) => !row.hidden);
+    const [low, high] = [shown.at(-1).dataset.record, shown[0].dataset.record];
+    status.textContent = `Records ${low} to ${high} of ${rows.length}`;
+    newer.disabled = page === 0;
+    older.disabled = page === last;
+  }
+  newer.addEventListener("click", () => turn(page - 1));
+  older.addEventListener("click", () => turn(page + 1));
+}
 """
 
 
@@ -833,9 +861,15 @@ def fmt(summary, key="geometric_relative_crps") -> str:
 
 
 def records_table(entries) -> str:
-    """One row per record, numbered as in the figures; a number opens the record's details."""
+    """One row per record, newest first and PAGE to a page, numbered as in the figures.
+
+    A record's number opens its details. Rows past the first page start hidden; the page's script
+    turns the pages.
+    """
+    numbered = list(enumerate(entries, 1))[::-1]
     rows = "".join(
-        f'<tr><td class="n"><a href="#record-{i}">{i}</a></td>'
+        f'<tr data-record="{i}" data-page="{k // PAGE}"{" hidden" * (k >= PAGE)}>'
+        f'<td class="n"><a href="#record-{i}">{i}</a></td>'
         f'<td class="n">{esc(f.split("_", 1)[0])}</td>'
         f"<td>{esc(t['description'])}</td>"
         f'<td class="n" data-label="CRPS">{r["gift_eval"]["crps"]:.4f} ± '
@@ -845,12 +879,19 @@ def records_table(entries) -> str:
         f'<td class="n" data-label="Runs">{r["gift_eval"]["runs"]}</td>'
         f'<td class="n" data-label="Commit"><a href="{REPO}/commit/{esc(r["commit"])}">'
         f"{esc(r['commit'][:7])}</a></td><td>{people(t)}</td></tr>"
-        for i, (f, t, r) in enumerate(entries, 1)
+        for k, (i, (f, t, r)) in enumerate(numbered)
     )
+    pager = ""
+    if len(entries) > PAGE:
+        pager = (
+            '<nav class="pager" aria-label="Pages of records"><button type="button" disabled>'
+            f"← Newer</button><span>Records {len(entries) - PAGE + 1} to {len(entries)} of "
+            f'{len(entries)}</span><button type="button">Older →</button></nav>'
+        )
     return (
         '<div class="scroll"><table class="records"><tr><th>#</th><th>Date</th><th>Change</th>'
         "<th>GIFT-Eval CRPS</th><th>MASE</th><th>Parameters</th><th>Runs</th><th>Commit</th>"
-        f"<th>Contributors</th></tr>{rows}</table></div>"
+        f"<th>Contributors</th></tr>{rows}</table></div>{pager}"
     )
 
 
@@ -917,7 +958,7 @@ def page(entries) -> str:
 <a class="news" href="{SIMONS_HF}"><span class="tag">New</span>
 <span>{NEWS}<span class="go">&nbsp;→</span></span></a>
 <h1><i>nano</i>TSFM</h1>
-<p>Hill-climbing GIFT-Eval with one A100 and one hour.</p>
+<p>Hill-climbing <a href="{LEADERBOARD}">GIFT-Eval</a> with one A100 and one hour.</p>
 <nav class="buttons">{buttons}</nav>
 <p class="latest">{latest(entries)}</p>
 </div></header>
