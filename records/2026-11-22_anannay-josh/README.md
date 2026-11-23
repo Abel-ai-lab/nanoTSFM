@@ -15,8 +15,9 @@ ai_disclosure: Most of this submission was built by AI agents under Josh Wright'
 
 Built on record 4 (anannay-josh, `configs/final.yaml`, verified 0.5811 ± 0.0010): a 3.3M model,
 5,000 steps on GEP-M, `source_power` 1.5, sign-flip and 2 to 4 step averaging augmentation, and a
-flip-symmetric, nonnegative forecast. A record needs a verified mean of 0.5678 or lower (a margin
-of 0.0133).
+flip-symmetric, nonnegative forecast. The current record is record 5 (shira-manas, verified
+0.5605 ± 0.0017: record 4 on GEP-L with `source_power` 1 and 40,000 steps), so a record needs a
+verified mean of 0.5472 or lower (a margin of 0.0133).
 
 Record 4 got 0.05 from two ideas that add no training time: show the model transformed copies of
 real windows, and make `forecast()` respect a symmetry the data has. It trains for about 95 seconds
@@ -168,8 +169,10 @@ CRPS and MASE are relative to Seasonal Naive on GIFT-Eval, lower is better, mean
 | final-s2 | 2 | {{S2_CRPS}} | {{S2_MASE}} | {{S2_VAL}} | {{S2_SEC}} | {{STEPS}} |
 | **Mean** | | **{{MEAN_CRPS}} ± {{SD_CRPS}}** | {{MEAN_MASE}} ± {{SD_MASE}} | {{MEAN_VAL}} ± {{SD_VAL}} | | |
 | Record 4, verified | | 0.5811 ± 0.0010 | 0.8508 ± 0.0020 | 0.6096 (reported) | 170 to 174 | 5,000 |
+| Record 5, verified (the current record) | | 0.5605 ± 0.0017 | | | | 40,000 |
 
-The mean is {{GAP_R4}} below record 4's verified 0.5811, against a required margin of 0.013.
+The mean is {{GAP_R5}} below record 5's verified 0.5605 and {{GAP_R4}} below record 4's 0.5811,
+against a required margin of 0.0133.
 
 Everything below this line ran at development commits on the same RTX 5070 Ti. The one-model rows
 are the first model of each development ensemble run, which trains first and with the run's seed
@@ -204,8 +207,8 @@ the step's own paired test on held-out Pretrain sources, 3 seeds. Negative is be
 | without views | 0.5236 | 0.766 | −0.0058 | −0.0091 |
 | tail floor, added alone to the gate-only forecast (0.5302 to 0.5267) | | | −0.0035 | −0.0049 |
 | without sign clip and integer snap | 0.5193 | 0.761 | −0.0015 | −0.0029 |
-| without the polyphase heads | {{NOPOLY_S7}} | | {{POLY_GAIN}} | −0.0071 (3.3M model, 3 runs) |
-| without the context clamp | {{NOCLAMP_S7}} | | {{CLAMP_GAIN}} | not tested |
+| without the polyphase heads | not run | | | −0.0071 (3.3M model, 3 runs) |
+| without the context clamp | not run | | | not tested |
 | One plain pass: no heads, gate, views, floor, clip or snap (clamp on) | 0.5479 | 0.795 | −0.0301 for all of them | |
 | One plain pass with record 4's two options (flip average, clip at 0) | 0.5395 | 0.783 | | |
 
