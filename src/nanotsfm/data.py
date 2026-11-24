@@ -128,6 +128,8 @@ class Windows(Dataset):
         count: int,
         seed: int,
         power=0.0,
+        sign_flip=0.0,
+        downsample=0.0,
         profile_power=1.0,
         profile_path=None,
     ):
@@ -147,6 +149,7 @@ class Windows(Dataset):
         self.context = context
         self.horizon = horizon
         self.count = count
+        self.sign_flip, self.downsample = sign_flip, downsample
         self.seed = seed
 
         # Enable statistical sampling only for the training configuration.
@@ -441,9 +444,22 @@ class Windows(Dataset):
                     replace=False,
                 )
             )
-            length = min(group.shape[1], self.context + self.horizon)
-            start = rng.integers(group.shape[1] - length + 1)
-            window = np.array(group[channels, start : start + length], copy=True)
+            factor = 1
+            if self.downsample and rng.random() < self.downsample:
+                factor = int(rng.integers(2, 5))
+                if group.shape[1] // factor <= self.horizon:
+                    factor = 1
+            length = min(group.shape[1] // factor, self.context + self.horizon)
+            start = rng.integers(group.shape[1] - length * factor + 1)
+            window = np.array(group[channels, start : start + length * factor], copy=True)
+            if factor > 1:
+                blocks = window.reshape(len(channels), length, factor)
+                counts = np.isfinite(blocks).sum(-1)
+                sums = np.where(np.isfinite(blocks), blocks, 0).sum(-1)
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    window = np.where(counts > 0, sums / counts, np.nan).astype("float32")
+            if self.sign_flip and rng.random() < self.sign_flip:
+                window = -window
             cut = length - self.horizon
             if np.isfinite(window[:, :cut]).any() and np.isfinite(window[:, cut:]).any():
                 history = np.full((len(channels), self.context), np.nan, dtype="float32")

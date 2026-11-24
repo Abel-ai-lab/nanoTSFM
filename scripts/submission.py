@@ -45,7 +45,8 @@ VERIFIED = "verified.json"  # written by verify, then committed by the maintaine
 TEAM_FIELDS = ("team", "description", "members", "ai_disclosure")
 MAX_MEMBERS = 2
 MAX_FILE_BYTES = 2**20
-MAX_LOG_POINTS = 1000
+MAX_LOG_POINTS = 250  # training-loss points kept per run; enough for the record page's chart
+LOG_DIGITS = 4
 
 
 def sha256(path: Path) -> str:
@@ -167,6 +168,39 @@ def current_record(folder: Path, tree: str | None = None) -> tuple[str, dict] | 
     return min(earlier, key=lambda item: item[1]["crps"]) if earlier else None
 
 
+def log_window(logs: list[list[dict]]) -> int:
+    """Training-loss entries per logged point, the same for every run of a record."""
+    longest = max(sum("loss" in e for e in log) for log in logs)
+    return max(1, -(-longest // MAX_LOG_POINTS))
+
+
+def thin(log: list[dict], window: int) -> list[dict]:
+    """Average each `window` training-loss entries into one point at the window's last step.
+
+    Validation entries stay as they are, and every loss is rounded to LOG_DIGITS decimals.
+    """
+    losses = [e for e in log if "loss" in e]
+    points = {}
+    for start in range(0, len(losses), window):
+        chunk = losses[start : start + window]
+        points[id(chunk[-1])] = {**chunk[-1], "loss": statistics.mean(e["loss"] for e in chunk)}
+    kept = [points.get(id(e), e) for e in log if "loss" not in e or id(e) in points]
+    return [
+        {k: round(v, LOG_DIGITS) if k.endswith("loss") else v for k, v in e.items()} for e in kept
+    ]
+
+
+def write_result(path: Path, result: dict):
+    """Write result.json with two-space indents and one line per training-log entry."""
+    logs = {f"<log {i}>": run["log"] for i, run in enumerate(result["runs"])}
+    runs = [{**run, "log": key} for run, key in zip(result["runs"], logs, strict=True)]
+    text = json.dumps({**result, "runs": runs}, indent=2)
+    for key, log in logs.items():
+        rows = ",\n".join(" " * 8 + json.dumps(e) for e in log)
+        text = text.replace(json.dumps(key), f"[\n{rows}\n{' ' * 6}]")
+    path.write_text(text + "\n")
+
+
 def package(folder: Path, run_dirs: list[Path]) -> Path:
     if not (folder / "README.md").exists():
         raise FileNotFoundError(f"Copy records/template to {folder} and fill in README.md")
@@ -182,10 +216,6 @@ def package(folder: Path, run_dirs: list[Path]) -> Path:
         config = json.loads((run_dir / "config.json").read_text())
         run = json.loads((run_dir / "run.json").read_text())
         lines = (run_dir / "training.jsonl").read_text().splitlines()
-        entries = [json.loads(line) for line in lines if line.strip()]
-        losses = [e for e in entries if "loss" in e]
-        stride = max(1, -(-len(losses) // MAX_LOG_POINTS))
-        kept = {id(e) for e in losses[::stride] + losses[-1:]}
 
         def summary(name, run_dir=run_dir):
             path = run_dir / name
@@ -204,7 +234,7 @@ def package(folder: Path, run_dirs: list[Path]) -> Path:
                 "gift_eval": summary("gift.json"),
                 "gep_val": summary("gep-val.json"),
                 "gep_test": summary("gep-test.json"),
-                "log": [e for e in entries if "loss" not in e or id(e) in kept],
+                "log": [json.loads(line) for line in lines if line.strip()],
             }
         )
         configs.append(config)
@@ -215,8 +245,10 @@ def package(folder: Path, run_dirs: list[Path]) -> Path:
     if len(set(unseeded)) != 1 or len({json.dumps(r["data"]) for r in runs}) != 1:
         raise ValueError("Runs may differ only in their seed")
     shared = {k: runs[0][k] for k in ("parameters", "data")}
+    window = log_window([run["log"] for run in runs])
     for run in runs:
         del run["parameters"], run["data"]
+        run["log"] = thin(run["log"], window)
     result = {
         "commit": environments[0]["commit"],
         "uncommitted_changes": False,
@@ -227,7 +259,7 @@ def package(folder: Path, run_dirs: list[Path]) -> Path:
         "gift_eval": summarize([r["gift_eval"] for r in runs]),
         "runs": runs,
     }
-    (folder / "result.json").write_text(json.dumps(result, indent=2) + "\n")
+    write_result(folder / "result.json", result)
     return folder
 
 

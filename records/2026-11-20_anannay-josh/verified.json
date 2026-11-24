@@ -1,0 +1,41 @@
+{
+  "gift_eval": {
+    "crps": 0.5811410992038314,
+    "crps_sd": 0.0010373005714604153,
+    "mase": 0.8507688543133941,
+    "mase_sd": 0.0020296143977575924,
+    "runs": 3
+  },
+  "runs": [
+    {
+      "seed": 1102542383,
+      "training_seconds": 170.26864628406474,
+      "wall_seconds": 190.0983159399475,
+      "device": "NVIDIA A100-SXM4-80GB",
+      "gift_eval": {
+        "geometric_relative_crps": 0.581155518274027,
+        "geometric_relative_mase": 0.8525285695857061
+      }
+    },
+    {
+      "seed": 690164286,
+      "training_seconds": 173.65803781093564,
+      "wall_seconds": 180.07250034395838,
+      "device": "NVIDIA A100-SXM4-80GB",
+      "gift_eval": {
+        "geometric_relative_crps": 0.5800966642624872,
+        "geometric_relative_mase": 0.8485485168288708
+      }
+    },
+    {
+      "seed": 1242672583,
+      "training_seconds": 171.23809404595522,
+      "wall_seconds": 177.3562804159592,
+      "device": "NVIDIA A100-SXM4-80GB",
+      "gift_eval": {
+        "geometric_relative_crps": 0.5821711150749801,
+        "geometric_relative_mase": 0.8512294765256053
+      }
+    }
+  ]
+}

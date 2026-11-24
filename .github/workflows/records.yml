@@ -13,11 +13,8 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
-  page:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -25,5 +22,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
+  # A job of its own, as in GitHub's Pages template: the upload is listed by the time it starts,
+  # and a failed deploy can be re-run alone, without a second upload of the page.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v5
