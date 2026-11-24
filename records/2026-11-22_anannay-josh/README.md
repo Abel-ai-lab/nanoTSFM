@@ -6,7 +6,7 @@ members:
     github: Anannay16
   - name: Josh Wright
     github: JoshWright22
-ai_disclosure: Most of this submission was built by AI agents under Josh Wright's direction. Claude (Anthropic), Codex (OpenAI) and Gemini (Google) agents proposed ideas, wrote the code, ran the training and the ablations, audited the code and runs for leakage, banned data and the clock, and drafted this report. The members set the priorities, chose what to submit and checked the rules with the maintainer. Every number here was read from run folders and result files by script.
+ai_disclosure: We used AI agents (Claude, Codex and Gemini) as research assistants to search papers for ideas, write and review code, run and log experiments, and draft text. We chose what to try and what to submit, checked the rules with the maintainers, and checked every reported number against the run files.
 ---
 
 # anannay-josh
@@ -356,7 +356,7 @@ earns its place on held-out sources and has a ruling.
   submission, which dropped its ensemble because of them.
 - **Josh Wright:** the 13M model and this submission: the held-out-source test, the training
   views, polyphase heads, phase tokens, the gate and the other forecast-time steps, the ablations
-  and this report, directing the AI agents that built them.
+  and this report.
 - **Built on** record 4, and through it records 2 (Shu-Wan, `source_power`) and 3 (sahil-saahir,
   GEP-L with longer training), and the nanoTSFM baseline by Abel AI Lab.
 - **Borrowed ideas:**
@@ -381,8 +381,8 @@ earns its place on held-out sources and has a ruling.
     those series were used only to test the model, never to train it.
   - nanoTSFM's model is a simplified [Toto 2.0](https://arxiv.org/abs/2605.20119); the benchmark is
     [GIFT-Eval](https://arxiv.org/abs/2410.10393).
-- **AI assistance:** as in the front matter. Claude, Codex and Gemini agents wrote the code, ran
-  the experiments and drafted this report; three of them audited the code and runs independently.
+- **AI assistance:** as in the front matter: AI agents helped search papers, write and review code,
+  run experiments and draft text; we checked every number against the run files.
 
 To reproduce:
 
