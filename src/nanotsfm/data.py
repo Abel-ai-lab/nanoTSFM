@@ -111,7 +111,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 PROFILE_STATS_PATH = (
     REPOSITORY_ROOT
     / "statistical-approach"
-    / "series_stats_GEP-M_train.parquet"
+    / "series_stats_GEP-L_train.parquet"
 )
 
 # All series with one or more missing/non-finite statistical features
