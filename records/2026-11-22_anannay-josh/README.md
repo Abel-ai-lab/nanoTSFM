@@ -181,7 +181,10 @@ CRPS and MASE are relative to Seasonal Naive on GIFT-Eval, lower is better, mean
 | Record 5, verified (the current record) | | 0.5605 ± 0.0017 | | | | 40,000 |
 
 The mean is 0.0289 below record 5's verified 0.5605 and 0.0495 below record 4's 0.5811,
-against a required margin of 0.0133.
+against a required margin of 0.0133. The same configuration also ran before we merged record 5 into our
+branch, at commits `0195e5c` (seeds 7, 1, 2) and `901c5bf` (seed 2); the two of those runs that
+were scored (seed 7, 0.5308; seed 2, 0.5309) match the final runs to every digit. They were
+redone so that every reported run trained at one commit after merging `main`.
 
 Everything below this line ran at development commits on the same RTX 5070 Ti. The one-model rows
 are the first model of each development ensemble run, which trains first and with the run's seed
