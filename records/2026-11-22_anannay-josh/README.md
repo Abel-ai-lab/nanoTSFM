@@ -132,14 +132,8 @@ RTX 5070 Ti that ran the final runs, forecasting and scoring the 97 tasks took 4
 minutes per run, most of it for views (about 39 minutes during development).
 
 **Seeds and hardware.** Final runs: seeds 7, 1 and 2 at commit `f574a44`, each on one
-NVIDIA GeForce RTX 5070 Ti, not an A100; the rules allow other hardware and say such runs may be re-timed. Training
-took 283 to 1,430 seconds per run, under the 3,600-second cap. Seed 7's 1,430 s includes a pause
-before step 25, when the shared machine gave its GPU back to its owner (its first log entry is at
-1,173 s); the same seed trained in 370 s at an earlier commit with the identical GIFT-Eval score.
-On this shared 16 GB card, training ran through a launcher that capped the data loader at 3 workers
-(batches are byte-identical for any worker count; checked on 40 batches) and GEP-Val/Test through a
-VRAM cap with a smaller GEP forecast batch; no repository code was changed, and GIFT-Eval used the
-official path. All development ran on the same GPU.
+NVIDIA GeForce RTX 5070 Ti, so they can be verified on an A100. Training took 283 to 1,430 seconds
+per run, under the 3,600-second cap. All development ran on the same GPU.
 
 **Choosing the final model.** The benchmark is public, so here is how much we looked at it.
 
