@@ -30,8 +30,9 @@ of the 3,600. We expected both ideas to go further, and a larger model on more d
 3. **The same views at forecast time.** One set of weights forecasts the history, its negation,
    its square root, and every 2nd and 4th point of it, and the forecasts are combined.
 
-The ablation gives each forecast-time step its own GIFT-Eval gain on the same weights, and each
-training choice a paired 3-seed test on held-out GIFT-Eval Pretrain sources.
+The ablation gives most forecast-time steps a GIFT-Eval gain on the same weights (seed 7; the
+polyphase heads have only a held-out gain and the context clamp none), and each training choice a
+paired 3-seed test on held-out GIFT-Eval Pretrain sources.
 
 ## Method
 
@@ -49,7 +50,10 @@ stride, 4 (`network_config` in `model.py`).
 **Phase tokens** (`phase_tokens`, in training and forecasting). Up to 4 periods are found in each
 window's context with one FFT and Fisher's test, as in TinyCast. Every patch token, future ones
 included, gets the sine and cosine of its position in each cycle through a learned 8 × 384 matrix
-that starts at zero. Only the context is read, so no later point leaks.
+that starts at zero. At forecast time only the given history is read. In training the periods are
+found on the first 1,024 points of the 1,536-point window, so the earliest patches' tokens can
+reflect points after them inside that real window (a train/forecast mismatch we found late, not a
+leak of test data).
 
 **Training.** 8,000 steps, batch 256, AdamW, peak learning rate 0.002, the same warmup and cosine
 schedule. The training clock is `main`'s, unchanged.
@@ -94,8 +98,8 @@ How each was chosen, in full:
   3.3M model).
 
 **Forecasting (`model.py`, `forecast()`), interface unchanged.** Every step uses only the history
-the evaluator passes in and this model's own forecasts, and none changes a weight. Each has its own
-gain in Results. Record 4's `flip_symmetric` and `clamp_positive` stay in the code and are off:
+the evaluator passes in and this model's own forecasts, and none changes a weight. Results gives
+each step's gain where we measured one. Record 4's `flip_symmetric` and `clamp_positive` stay in the code and are off:
 views contain the flipped forecast, and the sign clip contains the clamp.
 
 - **Polyphase heads** (`polyphase_forecast_strides: [2, 4]`, weight 0.25). The model also forecasts
@@ -129,8 +133,13 @@ minutes per run, most of it for views (about 39 minutes during development).
 
 **Seeds and hardware.** Final runs: seeds 7, 1 and 2 at commit `f574a44`, each on one
 NVIDIA GeForce RTX 5070 Ti, not an A100; the rules allow other hardware and say such runs may be re-timed. Training
-took 283 to 1,430 seconds per run, far under the 3,600-second cap. All development ran on the
-same GPU.
+took 283 to 1,430 seconds per run, under the 3,600-second cap. Seed 7's 1,430 s includes a pause
+before step 25, when the shared machine gave its GPU back to its owner (its first log entry is at
+1,173 s); the same seed trained in 370 s at an earlier commit with the identical GIFT-Eval score.
+On this shared 16 GB card, training ran through a launcher that capped the data loader at 3 workers
+(batches are byte-identical for any worker count; checked on 40 batches) and GEP-Val/Test through a
+VRAM cap with a smaller GEP forecast batch; no repository code was changed, and GIFT-Eval used the
+official path. All development ran on the same GPU.
 
 **Choosing the final model.** The benchmark is public, so here is how much we looked at it.
 
@@ -164,9 +173,9 @@ CRPS and MASE are relative to Seasonal Naive on GIFT-Eval, lower is better, mean
 
 | Run | Seed | GIFT-Eval CRPS | GIFT-Eval MASE | GEP-Val CRPS | Train s | Steps |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| final-s7 | 7 | 0.5308 | 0.7840 | 0.5663 | 1,430 | 8,000 |
-| final-s1 | 1 | 0.5332 | 0.7849 | 0.5681 | 289 | 8,000 |
-| final-s2 | 2 | 0.5309 | 0.7812 | 0.5700 | 283 | 8,000 |
+| single-13m-s7 | 7 | 0.5308 | 0.7840 | 0.5663 | 1,430 | 8,000 |
+| single-13m-s1 | 1 | 0.5332 | 0.7849 | 0.5681 | 289 | 8,000 |
+| single-13m-s2 | 2 | 0.5309 | 0.7812 | 0.5700 | 283 | 8,000 |
 | **Mean** | | **0.5316 ± 0.0014** | 0.7834 ± 0.0019 | 0.5681 ± 0.0019 | | |
 | Record 4, verified | | 0.5811 ± 0.0010 | 0.8508 ± 0.0020 | 0.6096 (reported) | 170 to 174 | 5,000 |
 | Record 5, verified (the current record) | | 0.5605 ± 0.0017 | | | | 40,000 |
@@ -180,19 +189,20 @@ as a single run does, graded alone. With the gate they scored 0.5178, 0.5206 and
 0.0015, MASE 0.760); without it, seed 7 scored 0.5308.
 
 **By horizon and frequency** (geometric mean of relative CRPS over the tasks in each group, mean of
-3 seeds; record 4's numbers are from its report, ours are the development runs with the gate):
+3 seeds; record 4's numbers are from its report, ours are the three final runs; the development
+runs with the gate are shown for comparison):
 
-| Group | Tasks | Record 4 | This model, local |
-| --- | ---: | ---: | ---: |
-| short | 55 | 0.574 | 0.532 |
-| medium | 21 | 0.592 | 0.511 |
-| long | 21 | 0.585 | 0.497 |
-| second | 6 | 1.277 | 0.659 |
-| minute | 30 | 0.573 | 0.534 |
-| hour | 31 | 0.505 | 0.457 |
-| day | 15 | 0.458 | 0.434 |
-| week | 8 | 0.692 | 0.653 |
-| month / quarter / year | 5 / 1 / 1 | 0.774 / 0.809 / 0.842 | 0.737 / 0.783 / 0.827 |
+| Group | Tasks | Record 4 | This submission | Development, with the gate |
+| --- | ---: | ---: | ---: | ---: |
+| short | 55 | 0.574 | 0.536 | 0.532 |
+| medium | 21 | 0.592 | 0.529 | 0.511 |
+| long | 21 | 0.585 | 0.522 | 0.497 |
+| second | 6 | 1.277 | 0.866 | 0.659 |
+| minute | 30 | 0.573 | 0.532 | 0.534 |
+| hour | 31 | 0.505 | 0.469 | 0.457 |
+| day | 15 | 0.458 | 0.432 | 0.434 |
+| week | 8 | 0.692 | 0.658 | 0.653 |
+| month / quarter / year | 5 / 1 / 1 | 0.774 / 0.809 / 0.842 | 0.716 / 0.782 / 0.827 | 0.737 / 0.783 / 0.827 |
 
 ### Ablation: each forecast-time step (same weights)
 
@@ -313,11 +323,10 @@ different idea that we trust least: −0.013 on GIFT-Eval, nothing on held-out s
 Either GIFT-Eval has more of the strongly seasonal 10-second series it helps, or it fits the
 benchmark. With no ruling on it, we submit without it.
 
-**Where it helps and hurts** (development runs with the gate). Against record 4 every horizon and
-frequency improves. The largest gains are on medium and long horizons (0.592 to 0.511, 0.585 to
-0.497) and on 10-second data (1.277 to 0.659). Most of the 10-second gain came from the gate (0.875
-without it, seed 7), so the submission gains less there. Monthly, quarterly and yearly data gain
-least.
+**Where it helps and hurts** (the three final runs). Against record 4 every horizon and frequency
+improves. The largest gains are on 10-second data (1.277 to 0.866) and on medium and long horizons
+(0.592 to 0.529, 0.585 to 0.522). The gate we left out helped 10-second data most (0.659 with it).
+Quarterly and yearly data gain least.
 
 **Limitations.**
 
@@ -376,11 +385,12 @@ To reproduce:
 
 ```shell
 uv run --locked --extra gift python -m nanotsfm.data download GEP-L GEP-Val GEP-Test GEP-tasks
-./run.sh train final-s7 configs/single-13m.yaml 7
-./run.sh train final-s1 configs/single-13m.yaml 1
-./run.sh train final-s2 configs/single-13m.yaml 2
-./run.sh eval final-s7   # and final-s1, final-s2
-./run.sh submit 2026-11-22_anannay-josh final-s7 final-s1 final-s2
+./run.sh train single-13m-s7 configs/single-13m.yaml 7
+./run.sh train single-13m-s1 configs/single-13m.yaml 1
+./run.sh train single-13m-s2 configs/single-13m.yaml 2
+./run.sh test single-13m-s7   # GEP-Test; and s1, s2
+./run.sh eval single-13m-s7   # and s1, s2
+./run.sh submit 2026-11-22_anannay-josh single-13m-s7 single-13m-s1 single-13m-s2
 ```
 
 ## References
