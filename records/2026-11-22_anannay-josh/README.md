@@ -124,12 +124,12 @@ views contain the flipped forecast, and the sign clip contains the clamp.
   history of whole numbers gets whole-number forecasts.
 
 **Forecast cost.** These steps need many model passes per series; evaluation needs a GPU. On the
-RTX 5070 Ti that ran the final runs, forecasting and scoring the 97 tasks took {{LOCAL_EVAL_MIN}}
+RTX 5070 Ti that ran the final runs, forecasting and scoring the 97 tasks took 49
 minutes per run, most of it for views (about 39 minutes during development).
 
-**Seeds and hardware.** Final runs: seeds 7, 1 and 2 at commit `{{COMMIT}}`, each on one
-{{GPU}}, not an A100; the rules allow other hardware and say such runs may be re-timed. Training
-took {{SEC_RANGE}} seconds per run, far under the 3,600-second cap. All development ran on the
+**Seeds and hardware.** Final runs: seeds 7, 1 and 2 at commit `f574a44`, each on one
+NVIDIA GeForce RTX 5070 Ti, not an A100; the rules allow other hardware and say such runs may be re-timed. Training
+took 283 to 1,430 seconds per run, far under the 3,600-second cap. All development ran on the
 same GPU.
 
 **Choosing the final model.** The benchmark is public, so here is how much we looked at it.
@@ -164,14 +164,14 @@ CRPS and MASE are relative to Seasonal Naive on GIFT-Eval, lower is better, mean
 
 | Run | Seed | GIFT-Eval CRPS | GIFT-Eval MASE | GEP-Val CRPS | Train s | Steps |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| final-s7 | 7 | {{S7_CRPS}} | {{S7_MASE}} | {{S7_VAL}} | {{S7_SEC}} | {{STEPS}} |
-| final-s1 | 1 | {{S1_CRPS}} | {{S1_MASE}} | {{S1_VAL}} | {{S1_SEC}} | {{STEPS}} |
-| final-s2 | 2 | {{S2_CRPS}} | {{S2_MASE}} | {{S2_VAL}} | {{S2_SEC}} | {{STEPS}} |
-| **Mean** | | **{{MEAN_CRPS}} ± {{SD_CRPS}}** | {{MEAN_MASE}} ± {{SD_MASE}} | {{MEAN_VAL}} ± {{SD_VAL}} | | |
+| final-s7 | 7 | 0.5308 | 0.7840 | 0.5663 | 1,430 | 8,000 |
+| final-s1 | 1 | 0.5332 | 0.7849 | 0.5681 | 289 | 8,000 |
+| final-s2 | 2 | 0.5309 | 0.7812 | 0.5700 | 283 | 8,000 |
+| **Mean** | | **0.5316 ± 0.0014** | 0.7834 ± 0.0019 | 0.5681 ± 0.0019 | | |
 | Record 4, verified | | 0.5811 ± 0.0010 | 0.8508 ± 0.0020 | 0.6096 (reported) | 170 to 174 | 5,000 |
 | Record 5, verified (the current record) | | 0.5605 ± 0.0017 | | | | 40,000 |
 
-The mean is {{GAP_R5}} below record 5's verified 0.5605 and {{GAP_R4}} below record 4's 0.5811,
+The mean is 0.0289 below record 5's verified 0.5605 and 0.0495 below record 4's 0.5811,
 against a required margin of 0.0133.
 
 Everything below this line ran at development commits on the same RTX 5070 Ti. The one-model rows
