@@ -409,7 +409,7 @@ def train(
         batch_size=batch_size,
         collate_fn=pack_training_sequence if use_graph else pack_windows,
         num_workers=min(8, os.cpu_count() or 1) if device.type == "cuda" else 0,
-        pin_memory=device.type == "cuda",
+        pin_memory=device.type == "cuda" and not use_graph,
         # A private generator keeps the global RNG, and so resumed runs, unchanged.
         generator=torch.Generator(),
     )
@@ -466,6 +466,9 @@ def train(
                     break
                 if use_graph:
                     sequence, series_ids = packed
+                    # CUDA host allocations must stay on the training thread, outside capture.
+                    sequence = sequence.pin_memory()
+                    series_ids = series_ids.pin_memory()
                 else:
                     history, target, series_ids = packed
                     sequence = torch.cat((history, target), dim=-1)
