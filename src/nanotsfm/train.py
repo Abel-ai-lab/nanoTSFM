@@ -49,6 +49,7 @@ OPTIONAL = {
     "channel_limit": 0,  # each window keeps a uniform 1 to this many channels; 0 keeps them all
     "polyphase_share": 0.0,  # share of windows taken from every s-th point; see data.Windows
     "polyphase_strides": [2, 4],  # the strides s those windows draw from
+    "short_polyphase_strides": None,  # optional stride table during the short-context stage
     "cuda_graph_training": False,
 }
 
@@ -116,13 +117,15 @@ def load_config(path: Path):
     if type(polyphase) not in (int, float) or not 0 <= polyphase <= 1:
         raise ValueError("polyphase_share must be a number from 0 to 1")
     strides = option(settings, "polyphase_strides")
-    if (
-        not isinstance(strides, list)
-        or not strides
-        or any(type(stride) is not int or stride < 2 for stride in strides)
-    ):
-        raise ValueError("polyphase_strides must be integers of at least 2")
+    early_strides = option(settings, "short_polyphase_strides")
+    for key, table in (("polyphase_strides", strides), ("short_polyphase_strides", early_strides)):
+        if key == "short_polyphase_strides" and table is None:
+            continue
+        if not isinstance(table, list) or not table or any(type(s) is not int or s < 2 for s in table):
+            raise ValueError(f"{key} must be a list of integers of at least 2")
     short, short_steps = option(settings, "short_context"), option(settings, "short_context_steps")
+    if early_strides is not None and (short_steps is None or not polyphase):
+        raise ValueError("short_polyphase_strides requires a short-context phase and active polyphase sampling")
     if short is not None or short_steps is not None:
         base = network_config(model)
         if (type(short) is not int or not 0 < short < base.context_length or short % base.patch_length
@@ -360,6 +363,7 @@ def train(
     optimizer = torch.optim.AdamW(model.parameters(), lr=settings["learning_rate"])
     short_context = option(settings, "short_context")
     short_steps = option(settings, "short_context_steps")
+    early_strides = option(settings, "short_polyphase_strides")
     first_step, previous_seconds = 0, 0.0
     checkpoint = None
     if resume:
@@ -370,9 +374,11 @@ def train(
         for field in ("steps", "batch_size", "learning_rate", "seed", "device"):
             if checkpoint["training"][field] != settings[field]:
                 raise ValueError(f"Cannot change {field} during resume")
-        for field in ("short_context", "short_context_steps"):
+        for field in ("short_context", "short_context_steps", "short_polyphase_strides"):
             if option(checkpoint["training"], field) != option(settings, field):
                 raise ValueError(f"Cannot change {field} during resume")
+        if early_strides is not None and option(checkpoint["training"], "polyphase_strides") != option(settings, "polyphase_strides"):
+            raise ValueError("Cannot change the late stride table during a curriculum resume")
         model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         first_step, previous_seconds = checkpoint["step"], checkpoint["elapsed_seconds"]
@@ -389,6 +395,7 @@ def train(
     patch = model_config.patch_length
     future = math.ceil(model_config.prediction_length / patch) * patch
     batch_size = settings["batch_size"]
+    short_phase_schedule = (short_steps * batch_size, early_strides) if early_strides is not None else None
     # Windows splits off one point; training joins it back into the full sequence.
     windows = Windows(
         train_set,
@@ -403,6 +410,7 @@ def train(
         option(settings, "channel_limit"),
         option(settings, "polyphase_share"),
         option(settings, "polyphase_strides"),
+        short_phase_schedule=short_phase_schedule,
     )
     loader = DataLoader(
         Subset(windows, range(first_step * batch_size, len(windows))),

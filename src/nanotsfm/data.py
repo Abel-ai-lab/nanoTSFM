@@ -185,6 +185,8 @@ class Windows(Dataset):
         channel_limit: int = 0,
         polyphase_share: float = 0.0,
         polyphase_strides=(2, 4),
+        *,
+        short_phase_schedule=None,
     ):
         """Draw a source with weight (its series count) ** power, then a series from it.
 
@@ -206,6 +208,7 @@ class Windows(Dataset):
         real point at a random phase, with s drawn from polyphase_strides. Unlike augment's stride
         it also reaches short series, whose windows are padded. Such a window is resampled once, so
         augment's stride and block mean skip it.
+        An optional (window count, stride table) uses a separate draw distribution on the prefix.
         """
         self.context, self.horizon, self.count, self.seed = context, horizon, count, seed
         self.sign_flip, self.downsample = sign_flip, downsample
@@ -213,6 +216,7 @@ class Windows(Dataset):
         if (sign_flip or downsample) and (augment or channel_limit or polyphase_share):
             raise ValueError("sign_flip and downsample exclude augment, channel_limit, polyphase")
         self.polyphase_share, self.polyphase_strides = polyphase_share, polyphase_strides
+        self.short_phase_schedule = short_phase_schedule
         self.dataset, self.values = dataset, arrays(dataset)
         sources = {}
         for row, (source, values) in enumerate(zip(dataset["source"], self.values, strict=True)):
@@ -238,6 +242,8 @@ class Windows(Dataset):
 
     def __getitem__(self, index):
         rng = np.random.default_rng(np.random.SeedSequence([self.seed, int(index)]))
+        schedule = getattr(self, "short_phase_schedule", None)
+        strides = schedule[1] if schedule is not None and index < schedule[0] else self.polyphase_strides
         for _ in range(100):
             if self.weights is None:  # the baseline's uniform draw, kept for exact reproduction
                 source = self.sources[rng.integers(len(self.sources))]
@@ -271,7 +277,7 @@ class Windows(Dataset):
             else:
                 thinned = False
                 if self.polyphase_share and rng.random() < self.polyphase_share:
-                    stride = int(rng.choice(self.polyphase_strides))
+                    stride = int(rng.choice(strides))
                     # Every channel keeps the same phase, so variates stay aligned in time.
                     part = group[:, rng.integers(stride) :: stride]
                     if part.shape[1] > self.horizon:
