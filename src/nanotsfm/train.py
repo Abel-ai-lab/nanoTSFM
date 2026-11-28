@@ -16,8 +16,23 @@ import yaml
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Subset
 
-from nanotsfm.data import Windows, describe, load, pack_windows, write_json
-from nanotsfm.model import QUANTILES, ModelConfig, NanoTSFM, device_for, load_checkpoint
+from nanotsfm.data import (
+    AUGMENTATIONS,
+    COARSENINGS,
+    Windows,
+    describe,
+    load,
+    pack_windows,
+    write_json,
+)
+from nanotsfm.model import (
+    QUANTILES,
+    ModelConfig,
+    NanoTSFM,
+    device_for,
+    load_checkpoint,
+    network_config,
+)
 
 MASK_RATE_MAX = 0.4
 MASK_SPAN_MAX = 8
@@ -26,6 +41,19 @@ WARMUP_FRACTION = 0.05
 FINAL_LR_FRACTION = 0.1
 LOG_EVERY = 25
 VALIDATION_WINDOWS = 1024
+# More optional training fields and their defaults, which leave training as it was without them.
+OPTIONAL = {
+    "short_context": None,
+    "short_context_steps": None,
+    "augment": None,  # e.g. {"sign_flip": 0.5}: chances per window; see data.AUGMENTATIONS
+    "channel_limit": 0,  # each window keeps a uniform 1 to this many channels; 0 keeps them all
+    "polyphase_share": 0.0,  # share of windows taken from every s-th point; see data.Windows
+    "polyphase_strides": [2, 4],  # the strides s those windows draw from
+}
+
+
+def option(settings: dict, key: str):
+    return settings.get(key, OPTIONAL[key])
 
 
 def load_config(path: Path):
@@ -46,9 +74,10 @@ def load_config(path: Path):
         "source_power",
     }
     optional = {"sign_flip": 0.0, "downsample": 0.0}  # augmentation probabilities, off by default
-    if not required <= set(settings) <= required | set(optional):
+    if not required <= set(settings) <= required | set(optional) | set(OPTIONAL):
         raise ValueError(
-            f"Training fields must be {sorted(required)}, plus optionally {sorted(optional)}"
+            f"Training fields must be {sorted(required)}, plus optionally "
+            f"{sorted(optional) + sorted(OPTIONAL)}"
         )
     settings = {**optional, **settings}
     for key in optional:
@@ -68,6 +97,34 @@ def load_config(path: Path):
         raise ValueError("source_power must be a number from 0 to 2")
     if not isinstance(settings["data"], str) or not settings["data"]:
         raise ValueError("data must name a dataset config or a local parquet folder")
+    augment = option(settings, "augment")
+    if augment is not None and (
+        not isinstance(augment, dict)
+        or not set(augment) <= set(AUGMENTATIONS)
+        or any(type(p) not in (int, float) or not 0 <= p <= 1 for p in augment.values())
+    ):
+        raise ValueError(f"augment must map some of {AUGMENTATIONS} to probabilities")
+    if augment and sum(augment.get(name, 0) for name in COARSENINGS) > 1:
+        raise ValueError(f"{COARSENINGS} exclude each other, so may sum to at most 1")
+    limit = option(settings, "channel_limit")
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
+        raise ValueError("channel_limit must be a nonnegative integer")
+    polyphase = option(settings, "polyphase_share")
+    if type(polyphase) not in (int, float) or not 0 <= polyphase <= 1:
+        raise ValueError("polyphase_share must be a number from 0 to 1")
+    strides = option(settings, "polyphase_strides")
+    if (
+        not isinstance(strides, list)
+        or not strides
+        or any(type(stride) is not int or stride < 2 for stride in strides)
+    ):
+        raise ValueError("polyphase_strides must be integers of at least 2")
+    short, short_steps = option(settings, "short_context"), option(settings, "short_context_steps")
+    if short is not None or short_steps is not None:
+        base = network_config(model)
+        if (type(short) is not int or not 0 < short < base.context_length or short % base.patch_length
+                or type(short_steps) is not int or not 0 < short_steps < settings["steps"]):
+            raise ValueError("short_context and short_context_steps require an aligned shorter context and an early cutoff")
     return model, settings
 
 
@@ -134,15 +191,21 @@ def contiguous_patch_mask(shape, device) -> torch.Tensor:
     return position - latest < span
 
 
-def next_patch_loss(model, sequence: torch.Tensor, series_ids: torch.Tensor) -> torch.Tensor:
+def next_patch_loss(
+    model, sequence: torch.Tensor, series_ids: torch.Tensor, short_context: int | None = None
+) -> torch.Tensor:
     patch = model.config.patch_length
     batch, variates, length = sequence.shape
     hidden = contiguous_patch_mask((batch, variates, length // patch), sequence.device)
+    if short_context is not None:
+        dropped = model.config.context_length - short_context
+        sequence = sequence[..., dropped:]
+        hidden = hidden[..., dropped // patch:]
     observed = torch.isfinite(sequence).unflatten(-1, (-1, patch)).any(-1)
     hidden &= observed.cumsum(-1) > MIN_CONTEXT_PATCHES
     seen = (observed & ~hidden).cummax(-1).values
     inputs = sequence.masked_fill(hidden.repeat_interleave(patch, -1), float("nan"))
-    quantiles, loc, scale = model.next_patch(inputs, series_ids)
+    quantiles, loc, scale = model.next_patch(inputs, series_ids, phase_context=short_context)
     target = sequence.unflatten(-1, (-1, patch))[:, :, 1:].double()
     target = torch.asinh((target - loc[..., :-1, None]) / scale[..., :-1, None]).float()
     seen = (observed & ~hidden).cummax(-1).values
@@ -196,6 +259,9 @@ def train(
     seed: int | None = None,
 ):
     model_config, settings = load_config(config_path)
+    # config.json records the config as given, which the forecast reads in full; see network_config.
+    recorded = model_config
+    model_config = network_config(model_config)
     if data is not None:
         settings["data"] = str(data)
     if seed is not None:
@@ -207,14 +273,20 @@ def train(
     torch.set_num_threads(min(torch.get_num_threads(), 4))
     model = NanoTSFM(model_config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=settings["learning_rate"])
+    short_context = option(settings, "short_context")
+    short_steps = option(settings, "short_context_steps")
     first_step, previous_seconds = 0, 0.0
     checkpoint = None
     if resume:
         _, checkpoint = load_checkpoint(resume)
-        if checkpoint["data"] != identity or checkpoint["model_config"] != asdict(model_config):
+        saved_model_config = ModelConfig(**checkpoint["model_config"])
+        if checkpoint["data"] != identity or saved_model_config != model_config:
             raise ValueError("Resume requires identical data and model configuration")
         for field in ("steps", "batch_size", "learning_rate", "seed", "device"):
             if checkpoint["training"][field] != settings[field]:
+                raise ValueError(f"Cannot change {field} during resume")
+        for field in ("short_context", "short_context_steps"):
+            if option(checkpoint["training"], field) != option(settings, field):
                 raise ValueError(f"Cannot change {field} during resume")
         model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
@@ -227,7 +299,7 @@ def train(
     if output.exists() and any(output.iterdir()):
         raise FileExistsError("Use a fresh output directory, including for resume")
     output.mkdir(parents=True, exist_ok=True)
-    write_json(output / "config.json", {"model": asdict(model_config), "training": settings})
+    write_json(output / "config.json", {"model": asdict(recorded), "training": settings})
     record_environment(output)
     patch = model_config.patch_length
     future = math.ceil(model_config.prediction_length / patch) * patch
@@ -242,6 +314,10 @@ def train(
         settings["source_power"],
         settings["sign_flip"],
         settings["downsample"],
+        option(settings, "augment"),
+        option(settings, "channel_limit"),
+        option(settings, "polyphase_share"),
+        option(settings, "polyphase_strides"),
     )
     loader = DataLoader(
         Subset(windows, range(first_step * batch_size, len(windows))),
@@ -308,7 +384,8 @@ def train(
                     group["lr"] = learning_rate(step, settings["steps"], settings["learning_rate"])
                 optimizer.zero_grad(set_to_none=True)
                 with autocast:
-                    loss = next_patch_loss(model, sequence, series_ids)
+                    active_short_context = short_context if short_steps is not None and step < short_steps else None
+                    loss = next_patch_loss(model, sequence, series_ids, active_short_context)
                 loss.backward()
                 norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 nonfinite |= ~torch.isfinite(norm)
@@ -319,6 +396,8 @@ def train(
                     check_finite()
                     last_loss = float(loss.detach())
                     record = {"step": step, "loss": last_loss, "seconds": round(elapsed(), 2)}
+                    if short_steps is not None:
+                        record["active_context"] = active_short_context or model_config.context_length
                     log.write(json.dumps(record) + "\n")
                     log.flush()
                 if step % settings["checkpoint_every"] == 0:

@@ -1,0 +1,40 @@
+model:
+  context_length: 4096
+  prediction_length: 512
+  patch_length: 32
+  width: 384
+  layers: 12
+  heads: 8
+  dropout: 0.0
+  infer_clamp: 1.0
+  polyphase_forecast_strides: [2, 4]
+  polyphase_forecast_weight: 0.25
+  polyphase_forecast_period: true
+  phase_tokens: true
+  infer_tail_floor: true
+  infer_views: true
+  infer_sign_clip: true
+  infer_integer_snap: true
+  infer_locked_history: true
+training:
+  data: GEP-L
+  steps: 74972
+  batch_size: 256
+  learning_rate: 0.002
+  seed: 7
+  device: cuda
+  max_seconds: 3600
+  checkpoint_every: 18743
+  source_power: 0.5
+  augment:
+    sign_flip: 0.5
+    time_reversal: 0.0
+    stride: 0.25
+    block_mean: 0.25
+    offset: 0.5
+    rescale: 0.5
+  polyphase_share: 0.25
+  polyphase_strides: [2, 4]
+  channel_limit: 1
+  short_context: 512
+  short_context_steps: 42972
