@@ -38,3 +38,4 @@ training:
   channel_limit: 1
   short_context: 512
   short_context_steps: 42972
+  cuda_graph_training: true

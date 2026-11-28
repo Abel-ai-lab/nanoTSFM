@@ -49,6 +49,7 @@ OPTIONAL = {
     "channel_limit": 0,  # each window keeps a uniform 1 to this many channels; 0 keeps them all
     "polyphase_share": 0.0,  # share of windows taken from every s-th point; see data.Windows
     "polyphase_strides": [2, 4],  # the strides s those windows draw from
+    "cuda_graph_training": False,
 }
 
 
@@ -80,6 +81,8 @@ def load_config(path: Path):
             f"{sorted(optional) + sorted(OPTIONAL)}"
         )
     settings = {**optional, **settings}
+    if type(option(settings, "cuda_graph_training")) is not bool:
+        raise ValueError("cuda_graph_training must be true or false")
     for key in optional:
         value = settings[key]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
@@ -146,16 +149,22 @@ def save_checkpoint(path, model, optimizer, settings, step, seconds, data):
     temporary.replace(path)
 
 
-def pinball_loss(prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+def pinball_loss(prediction: torch.Tensor, target: torch.Tensor, *, levels=None, invalid=None) -> torch.Tensor:
     observed = torch.isfinite(target)
     if prediction.shape != (*target.shape, len(QUANTILES)):
         raise ValueError("prediction and target shapes differ")
-    if not observed.any():
-        raise ValueError("Need at least one observed target")
+    if invalid is None:
+        if not observed.any():
+            raise ValueError("Need at least one observed target")
+        count = observed.sum()
+    else:
+        count = observed.sum()
+        invalid.logical_or_(count == 0)
+        count = count.clamp_min(1)
     error = torch.where(observed, target, 0.0).unsqueeze(-1) - prediction
-    quantiles = prediction.new_tensor(QUANTILES)
+    quantiles = prediction.new_tensor(QUANTILES) if levels is None else levels
     loss = torch.maximum(quantiles * error, (quantiles - 1) * error)
-    return (loss * observed.unsqueeze(-1)).sum() / (observed.sum() * len(QUANTILES))
+    return (loss * observed.unsqueeze(-1)).sum() / (count * len(QUANTILES))
 
 
 @torch.no_grad()
@@ -192,11 +201,13 @@ def contiguous_patch_mask(shape, device) -> torch.Tensor:
 
 
 def next_patch_loss(
-    model, sequence: torch.Tensor, series_ids: torch.Tensor, short_context: int | None = None
+    model, sequence: torch.Tensor, series_ids: torch.Tensor, short_context: int | None = None,
+    *, hidden=None, levels=None, invalid=None,
 ) -> torch.Tensor:
     patch = model.config.patch_length
     batch, variates, length = sequence.shape
-    hidden = contiguous_patch_mask((batch, variates, length // patch), sequence.device)
+    if hidden is None:
+        hidden = contiguous_patch_mask((batch, variates, length // patch), sequence.device)
     if short_context is not None:
         dropped = model.config.context_length - short_context
         sequence = sequence[..., dropped:]
@@ -210,7 +221,78 @@ def next_patch_loss(
     target = torch.asinh((target - loc[..., :-1, None]) / scale[..., :-1, None]).float()
     seen = (observed & ~hidden).cummax(-1).values
     target = target.masked_fill(~seen[..., :-1, None], float("nan"))
-    return pinball_loss(quantiles[:, :, :-1], target)
+    if invalid is None:
+        return pinball_loss(quantiles[:, :, :-1], target)
+    return pinball_loss(quantiles[:, :, :-1], target, levels=levels, invalid=invalid)
+
+
+def pack_training_sequence(samples):
+    """Join history and target before DataLoader pins the batch for CUDA."""
+    history, target, series_ids = pack_windows(samples)
+    return torch.cat((history, target), dim=-1), series_ids
+
+
+class CudaGraphUpdate:
+    """Capture deterministic loss and backward for the current context and batch shape."""
+
+    def __init__(self, model, optimizer, device, bf16, invalid):
+        self.model = model
+        self.optimizer = optimizer
+        self.device = device
+        self.bf16 = bf16
+        self.invalid = invalid
+        self.levels = torch.tensor(QUANTILES, device=device, dtype=torch.float32)
+        self.signature = None
+        self.graph = None
+        self.warmup = 0
+
+    def backward(self, sequence, ids, context, hidden):
+        with torch.autocast("cuda", torch.bfloat16, enabled=self.bf16, cache_enabled=False):
+            loss = next_patch_loss(
+                self.model, sequence, ids, context, hidden=hidden,
+                levels=self.levels, invalid=self.invalid,
+            )
+        loss.backward()
+        norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+        self.invalid.logical_or_(~torch.isfinite(norm))
+        return loss.detach()
+
+    def update(self, sequence, ids, context):
+        signature = (sequence.shape, ids.shape, context)
+        current = torch.cuda.current_stream(self.device)
+        if self.signature != signature:
+            current.synchronize()
+            self.graph = None
+            self.signature = signature
+            self.warmup = 3
+            self.stream = torch.cuda.Stream(device=self.device)
+        mask = contiguous_patch_mask(
+            (*ids.shape, sequence.shape[-1] // self.model.config.patch_length), self.device
+        )
+        if self.warmup:
+            self.stream.wait_stream(current)
+            with torch.cuda.stream(self.stream):
+                self.optimizer.zero_grad(set_to_none=True)
+                loss = self.backward(sequence, ids, context, mask)
+                self.optimizer.step()
+            current.wait_stream(self.stream)
+            self.warmup -= 1
+            return loss
+        if self.graph is None:
+            self.sequence = sequence.clone()
+            self.ids = ids.clone()
+            self.mask = torch.empty_like(mask)
+            self.optimizer.zero_grad(set_to_none=True)
+            current.synchronize()
+            self.graph = torch.cuda.CUDAGraph()
+            with torch.cuda.graph(self.graph, stream=self.stream):
+                self.loss = self.backward(self.sequence, self.ids, context, self.mask)
+        self.sequence.copy_(sequence, non_blocking=True)
+        self.ids.copy_(ids, non_blocking=True)
+        self.mask.copy_(mask, non_blocking=True)
+        self.graph.replay()
+        self.optimizer.step()
+        return self.loss
 
 
 def learning_rate(step: int, steps: int, peak: float) -> float:
@@ -269,6 +351,9 @@ def train(
     train_set = load(settings["data"], "train")
     identity = describe(settings["data"], train_set)
     device = device_for(settings["device"])
+    use_graph = option(settings, "cuda_graph_training")
+    if use_graph and (device.type != "cuda" or model_config.dropout != 0):
+        raise ValueError("CUDA Graph training requires CUDA and zero dropout")
     torch.manual_seed(settings["seed"])
     torch.set_num_threads(min(torch.get_num_threads(), 4))
     model = NanoTSFM(model_config).to(device)
@@ -322,7 +407,7 @@ def train(
     loader = DataLoader(
         Subset(windows, range(first_step * batch_size, len(windows))),
         batch_size=batch_size,
-        collate_fn=pack_windows,
+        collate_fn=pack_training_sequence if use_graph else pack_windows,
         num_workers=min(8, os.cpu_count() or 1) if device.type == "cuda" else 0,
         pin_memory=device.type == "cuda",
         # A private generator keeps the global RNG, and so resumed runs, unchanged.
@@ -366,6 +451,7 @@ def train(
     healthy = True
     # Set on the GPU when a gradient is not finite; read only when the loss is logged or saved.
     nonfinite = torch.zeros((), dtype=torch.bool, device=device)
+    graph_update = CudaGraphUpdate(model, optimizer, device, bf16, nonfinite) if use_graph else None
 
     def check_finite():
         nonlocal healthy
@@ -375,21 +461,29 @@ def train(
 
     try:
         with (output / "training.jsonl").open("w") as log:
-            for history, target, series_ids in loader:
+            for packed in loader:
                 if elapsed() >= settings["max_seconds"]:
                     break
-                sequence = torch.cat([history, target], dim=-1).to(device, non_blocking=True)
+                if use_graph:
+                    sequence, series_ids = packed
+                else:
+                    history, target, series_ids = packed
+                    sequence = torch.cat((history, target), dim=-1)
+                sequence = sequence.to(device, non_blocking=True)
                 series_ids = series_ids.to(device, non_blocking=True)
                 for group in optimizer.param_groups:
                     group["lr"] = learning_rate(step, settings["steps"], settings["learning_rate"])
-                optimizer.zero_grad(set_to_none=True)
-                with autocast:
-                    active_short_context = short_context if short_steps is not None and step < short_steps else None
-                    loss = next_patch_loss(model, sequence, series_ids, active_short_context)
-                loss.backward()
-                norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                nonfinite |= ~torch.isfinite(norm)
-                optimizer.step()
+                active_short_context = short_context if short_steps is not None and step < short_steps else None
+                if graph_update is None:
+                    optimizer.zero_grad(set_to_none=True)
+                    with autocast:
+                        loss = next_patch_loss(model, sequence, series_ids, active_short_context)
+                    loss.backward()
+                    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                    nonfinite |= ~torch.isfinite(norm)
+                    optimizer.step()
+                else:
+                    loss = graph_update.update(sequence, series_ids, active_short_context)
                 step += 1
                 windows_seen += batch_size
                 if step % LOG_EVERY == 0 or step == settings["steps"]:

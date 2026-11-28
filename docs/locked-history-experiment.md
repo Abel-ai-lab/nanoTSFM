@@ -66,6 +66,17 @@ histories, positive and signed series, and horizons crossing the first block.
 
 ## Reproduce on a RunPod A100
 
+This branch enables CUDA Graph training. The DataLoader joins each batch before pinning it.
+The optimizer, learning-rate schedule and the random mask draw run on each normal training
+step. Forward, backward and gradient clipping replay on the fixed input buffers. Capture
+resets when the active context or tensor shape changes.
+
+In a from-scratch, batch-256 A100 comparison using the production GEP-L DataLoader, both paths
+completed the same 128 updates, split evenly between 512 and 1,024 points. Recorded training
+time fell from 11.47 to 6.63 seconds. Model tensors, AdamW moments, CPU and CUDA RNG states,
+and terminal validation loss matched exactly. Peak PyTorch allocation was 3.36 and 3.40 GiB.
+The 97-task scores in the archived comparison above come from the earlier seed-7 checkpoint.
+
 Set the artifact and Hugging Face cache directories to your RunPod project volume. Run from the
 repository root.
 
