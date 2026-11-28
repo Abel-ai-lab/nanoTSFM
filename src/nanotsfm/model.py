@@ -292,18 +292,24 @@ class Polyphase(nn.Module):
             context = max(context, base.config.context_length * PERIOD_STRIDES[1])
         self.config = replace(base.config, context_length=context)
 
-    def interlaced(self, history: torch.Tensor, series_ids: torch.Tensor, stride: int):
+    def interlaced(self, history: torch.Tensor, series_ids: torch.Tensor, stride: int, *, take=None):
         """Return the interlaced forecast and which series have enough history in every phase."""
         context = self.base.config.context_length
         points = self.base.config.patch_length * POLYPHASE_MIN_PATCHES
         length = history.shape[-1]
         part = math.ceil(self.base.config.prediction_length / stride)
         forecast = torch.empty(*history.shape[:2], part * stride, len(QUANTILES)).to(history)
+        phases = stride if take is None else min(stride, take)
+        if phases < stride:
+            forecast.fill_(float("nan"))
         usable = torch.ones(history.shape[:2], dtype=torch.bool, device=history.device)
         for lead in range(stride):
             # This phase's last point sits `stride` steps before future position `lead`.
             phase = history[..., (length + lead) % stride :: stride][..., -context:]
             usable &= torch.isfinite(phase).sum(-1) >= points
+            if lead >= phases:
+                # Availability still depends on every phase, including unused ones.
+                continue
             phase = F.pad(phase, (context - phase.shape[-1], 0), value=float("nan"))
             forecast[:, :, lead::stride] = self.base(phase, series_ids)[:, :, :part]
         return forecast, usable
@@ -322,12 +328,12 @@ class Polyphase(nn.Module):
                     plan.setdefault(stride, []).append((row, channels))
         return plan
 
-    def interlaced_series(self, history: torch.Tensor, stride: int, chosen: list):
+    def interlaced_series(self, history: torch.Tensor, stride: int, chosen: list, *, take=None):
         """interlaced for the chosen series only, placed back in their rows; the rest are NaN."""
         samples = [(history[row, channels], history[row, channels, :0]) for row, channels in chosen]
         packed, _, ids = pack_windows(samples)
         ids = ids.to(history.device)
-        forecast, usable = self.interlaced(packed.to(history), ids, stride)
+        forecast, usable = self.interlaced(packed.to(history), ids, stride, take=take)
         placed = forecast.new_full((*history.shape[:2], *forecast.shape[2:]), float("nan"))
         reached = torch.zeros(history.shape[:2], dtype=torch.bool, device=history.device)
         for index, (row, channels) in enumerate(chosen):
@@ -335,22 +341,22 @@ class Polyphase(nn.Module):
             reached[row, channels] = usable[ids == index]
         return placed, reached
 
-    def forecasts(self, history: torch.Tensor, series_ids: torch.Tensor):
+    def forecasts(self, history: torch.Tensor, series_ids: torch.Tensor, *, take=None):
         if not self.by_period:
             for stride in self.strides:
-                yield self.interlaced(history, series_ids, stride)
+                yield self.interlaced(history, series_ids, stride, take=take)
             return
         for stride, chosen in sorted(self.period_plan(history, series_ids).items()):
-            yield self.interlaced_series(history, stride, chosen)
+            yield self.interlaced_series(history, stride, chosen, take=take)
 
-    def locked_first_forecasts(self, recent, older, series_ids):
+    def locked_first_forecasts(self, recent, older, series_ids, *, take=None):
         """Give a high-stride phase enough observations to fill its original model context."""
         limit = self.base.config.context_length
         minimum = self.base.config.patch_length * POLYPHASE_MIN_PATCHES
         has_older = older.isfinite().any(-1)
         for stride, groups in sorted(self.period_plan(recent, series_ids).items()):
             if stride <= max(self.strides):
-                yield self.interlaced_series(recent, stride, groups)
+                yield self.interlaced_series(recent, stride, groups, take=take)
                 continue
             counts = [
                 recent[..., (recent.shape[-1] + lead) % stride :: stride][..., -limit:]
@@ -366,10 +372,10 @@ class Polyphase(nn.Module):
             if extend.any():
                 prefix = older.masked_fill(~extend[..., None], torch.nan)
                 values = torch.cat((prefix, recent), dim=-1)
-                prediction, usable = self.interlaced_series(values, stride, groups)
+                prediction, usable = self.interlaced_series(values, stride, groups, take=take)
                 yield prediction, usable & eligible
             else:
-                yield self.interlaced_series(recent, stride, groups)
+                yield self.interlaced_series(recent, stride, groups, take=take)
 
     @staticmethod
     def blend(normal: torch.Tensor, forecasts, share: float) -> torch.Tensor:
@@ -435,12 +441,14 @@ def locked_history_rollout(model: Polyphase, history, horizon, series_ids):
     blocks, remaining = [], horizon
     while remaining:
         raw = model.base(recent[..., -model.base.config.context_length :], series_ids).double()
+        take = min(remaining, raw.shape[-2])
+        # Earlier blocks still need every phase for median feedback into later blocks.
+        phase_take = take if take == remaining else None
         if older.shape[-1]:
-            members = tuple(model.locked_first_forecasts(recent, older, series_ids))
+            members = tuple(model.locked_first_forecasts(recent, older, series_ids, take=phase_take))
             older = older[..., :0]
         else:
-            members = tuple(model.forecasts(recent, series_ids))
-        take = min(remaining, raw.shape[-2])
+            members = tuple(model.forecasts(recent, series_ids, take=phase_take))
         phase = model.blend(raw[..., :take, :], members, 1.0)
         pooled = pool_quantiles(raw[..., :take, :], phase, model.weight)
         blocks.append(pooled.float().sort(dim=-1).values)
