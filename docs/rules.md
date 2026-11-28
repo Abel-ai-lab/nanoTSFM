@@ -97,3 +97,5 @@ same question gets the same answer.
 - **Test-time changes** (2026-11-20, #49): `forecast()` may change how it forecasts, such as
   averaging over a sign flip or clipping quantiles at zero, if the interface stays the same.
 - **Ensembles** (2026-11-20, #49): not allowed; forecasts come from one trained model.
+- **Augmentation** (2026-11-27, #54): simple transforms of one real window are allowed; only the
+  synthetic series defined under [Data](#data) are not.
