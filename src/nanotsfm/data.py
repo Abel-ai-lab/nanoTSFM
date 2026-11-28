@@ -13,6 +13,15 @@ MAX_VARIATES = 32
 REPOSITORY = "abel-lab/nanoTSFM-pretrain"
 REVISION = "b8eee2fc1f7d71cf4d40001c39ac69e1af0d8cf7"
 TOY = "toy"
+# Training transforms of one real series; see apply_augment. stride and block_mean exclude each
+# other, so a window is never resampled twice.
+AUGMENTATIONS = ("sign_flip", "time_reversal", "stride", "block_mean", "offset", "rescale")
+COARSENINGS = ("stride", "block_mean")
+COARSE_RATES = (2, 3, 4)
+OFFSET_RANGE = 3.0  # the largest offset, in the channel's standard deviations
+RESCALE_RANGE = 2.0  # factors are log-uniform from 1 / RESCALE_RANGE to RESCALE_RANGE
+# A rescale may not take a channel near model.MIN_SCALE, where the causal scale stops following it.
+RESCALE_MIN_STD = 1e-3
 
 
 def sha256(path: Path) -> str:
@@ -94,6 +103,73 @@ def toy(split: str, seed: int = 7, series: int = 24, length: int = 512):
     return HFDataset.from_dict(rows)
 
 
+def draw_coarsening(rng, augment: dict, points: int, full: int):
+    """Draw the rate, the phase and the mode (see coarse_points), for a series of points.
+
+    The rate falls to what leaves a full window of real points, so a series shorter than two
+    windows is never resampled; a rate of 1 leaves the series as it is.
+    """
+    stride, block = (augment.get(name, 0) for name in COARSENINGS)
+    roll = rng.random()
+    if roll >= stride + block:
+        return 1, 0, False
+    rate = min(int(rng.choice(COARSE_RATES)), points // full)
+    if rate < 2:
+        return 1, 0, False
+    phase = int(rng.integers(min(rate, points - rate * full + 1)))
+    return rate, phase, roll >= stride
+
+
+def coarse_points(group, channels, first: int, stop: int, rate: int, phase: int, mean: bool):
+    """Points first to stop of the series at this rate: every rate-th real point, or with mean the
+    block means. A block's mean skips its missing points, and a block with none observed is
+    missing."""
+    begin, end = phase + first * rate, phase + stop * rate
+    if not mean:
+        return np.array(group[channels, begin:end:rate], copy=True)
+    blocks = group[channels, begin:end].reshape(len(channels), -1, rate)
+    observed = np.isfinite(blocks)
+    seen = observed.sum(-1)
+    total = np.where(observed, blocks, 0).sum(-1, dtype="float64")
+    return np.where(seen > 0, total / np.maximum(seen, 1), np.nan).astype("float32")
+
+
+def apply_augment(values: np.ndarray, rng, augment: dict) -> np.ndarray:
+    """Apply the per-window transforms to [V,T] values; every channel gets the same draws.
+
+    Missing points stay missing. causal_scale removes any offset and rescale exactly, up to float32
+    rounding, so the offset is bounded in standard deviations to keep that rounding small, and
+    each is skipped where it would overflow an observed point into a missing one or, for a rescale,
+    push a channel down to the scale floor.
+    """
+    reverse, negate, shift, resize = rng.random(4)
+    if reverse < augment.get("time_reversal", 0):
+        values = values[:, ::-1].copy()
+    if negate < augment.get("sign_flip", 0):
+        values = -values
+    shift = shift < augment.get("offset", 0)
+    resize = resize < augment.get("rescale", 0)
+    if not (shift or resize):
+        return values
+    observed = np.isfinite(values)
+    clean = np.where(observed, values, 0).astype("float64")
+    seen = np.maximum(observed.sum(-1, keepdims=True), 1)
+    mean = clean.sum(-1, keepdims=True) / seen
+    std = np.sqrt((np.where(observed, clean - mean, 0) ** 2).sum(-1, keepdims=True) / seen)
+    result = clean
+    if shift:
+        result = result + rng.uniform(-OFFSET_RANGE, OFFSET_RANGE) * std
+    if resize:
+        factor = RESCALE_RANGE ** rng.uniform(-1, 1)
+        if not (std[std > 0] * factor < RESCALE_MIN_STD).any():
+            result = result * factor
+    with np.errstate(over="ignore"):
+        result = result.astype("float32")
+    if not np.isfinite(result[observed]).all():
+        return values
+    return np.where(observed, result, values)
+
+
 class Windows(Dataset):
     def __init__(
         self,
@@ -105,25 +181,57 @@ class Windows(Dataset):
         power=0.0,
         sign_flip=0.0,
         downsample=0.0,
+        augment: dict | None = None,
+        channel_limit: int = 0,
+        polyphase_share: float = 0.0,
+        polyphase_strides=(2, 4),
     ):
         """Draw a source with weight (its series count) ** power, then a series from it.
 
         Power 0 weights sources equally, 1 weights every series equally, above 1 favours sources
-        with many series. Augmentations of the real series, off at 0 and drawing no random
+        with many series.
+
+        sign_flip and downsample are record 4's augmentations, off at 0 and drawing no random
         numbers then: with probability sign_flip a window is negated; with probability downsample
-        it is averaged over k = 2, 3 or 4 consecutive steps, a coarser view of the same series.
+        it is averaged over k = 2, 3 or 4 consecutive steps. They are kept for record 4's config
+        and can not be combined with the options below.
+
+        These are for training data only. With augment, a map from names in AUGMENTATIONS to
+        probabilities, each window is transformed on its own from the window's seeded generator.
+        Stride and block mean resample the series before the crop, so they read a crop rate times
+        longer and the window stays full length; the other transforms apply to the crop.
+        channel_limit caps a window's channels at a uniform draw from 1 to it.
+
+        A polyphase_share of windows comes from a polyphase subsequence of the series, every s-th
+        real point at a random phase, with s drawn from polyphase_strides. Unlike augment's stride
+        it also reaches short series, whose windows are padded. Such a window is resampled once, so
+        augment's stride and block mean skip it.
         """
         self.context, self.horizon, self.count, self.seed = context, horizon, count, seed
         self.sign_flip, self.downsample = sign_flip, downsample
+        self.augment, self.channel_limit = augment or None, channel_limit
+        if (sign_flip or downsample) and (augment or channel_limit or polyphase_share):
+            raise ValueError("sign_flip and downsample exclude augment, channel_limit, polyphase")
+        self.polyphase_share, self.polyphase_strides = polyphase_share, polyphase_strides
+        self.dataset, self.values = dataset, arrays(dataset)
         sources = {}
-        for source, values in zip(dataset["source"], arrays(dataset), strict=True):
+        for row, (source, values) in enumerate(zip(dataset["source"], self.values, strict=True)):
             if values.shape[1] > horizon:
-                sources.setdefault(source, []).append(values)
-        self.sources = list(sources.values())
+                sources.setdefault(source, []).append(row)
+        self.sources = [np.array(rows) for rows in sources.values()]
         if not self.sources or min(context, horizon, count) <= 0:
             raise ValueError("No series longer than the horizon, or an invalid window/count")
         weights = np.array([len(source) for source in self.sources], dtype=float) ** power
         self.weights = weights / weights.sum() if power else None
+
+    def __getstate__(self):
+        # Spawned loader workers get the dataset, which pickles as its Arrow file paths when it is
+        # memory-mapped, and rebuild the arrays on it, so all processes share one page cache.
+        return {**self.__dict__, "values": None}
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.values = arrays(self.dataset)
 
     def __len__(self):
         return self.count
@@ -135,30 +243,53 @@ class Windows(Dataset):
                 source = self.sources[rng.integers(len(self.sources))]
             else:
                 source = self.sources[rng.choice(len(self.sources), p=self.weights)]
-            group = source[rng.integers(len(source))]
-            channels = np.sort(
-                rng.choice(
-                    group.shape[0],
-                    min(group.shape[0], MAX_VARIATES),
-                    replace=False,
+            group = self.values[int(source[rng.integers(len(source))])]
+            if self.sign_flip or self.downsample:  # record 4's path, kept exactly
+                channels = np.sort(
+                    rng.choice(
+                        group.shape[0],
+                        min(group.shape[0], MAX_VARIATES),
+                        replace=False,
+                    )
                 )
-            )
-            factor = 1
-            if self.downsample and rng.random() < self.downsample:
-                factor = int(rng.integers(2, 5))
-                if group.shape[1] // factor <= self.horizon:
-                    factor = 1
-            length = min(group.shape[1] // factor, self.context + self.horizon)
-            start = rng.integers(group.shape[1] - length * factor + 1)
-            window = np.array(group[channels, start : start + length * factor], copy=True)
-            if factor > 1:
-                blocks = window.reshape(len(channels), length, factor)
-                counts = np.isfinite(blocks).sum(-1)
-                sums = np.where(np.isfinite(blocks), blocks, 0).sum(-1)
-                with np.errstate(invalid="ignore", divide="ignore"):
-                    window = np.where(counts > 0, sums / counts, np.nan).astype("float32")
-            if self.sign_flip and rng.random() < self.sign_flip:
-                window = -window
+                factor = 1
+                if self.downsample and rng.random() < self.downsample:
+                    factor = int(rng.integers(2, 5))
+                    if group.shape[1] // factor <= self.horizon:
+                        factor = 1
+                length = min(group.shape[1] // factor, self.context + self.horizon)
+                start = rng.integers(group.shape[1] - length * factor + 1)
+                window = np.array(group[channels, start : start + length * factor], copy=True)
+                if factor > 1:
+                    blocks = window.reshape(len(channels), length, factor)
+                    counts = np.isfinite(blocks).sum(-1)
+                    sums = np.where(np.isfinite(blocks), blocks, 0).sum(-1)
+                    with np.errstate(invalid="ignore", divide="ignore"):
+                        window = np.where(counts > 0, sums / counts, np.nan).astype("float32")
+                if self.sign_flip and rng.random() < self.sign_flip:
+                    window = -window
+            else:
+                thinned = False
+                if self.polyphase_share and rng.random() < self.polyphase_share:
+                    stride = int(rng.choice(self.polyphase_strides))
+                    # Every channel keeps the same phase, so variates stay aligned in time.
+                    part = group[:, rng.integers(stride) :: stride]
+                    if part.shape[1] > self.horizon:
+                        group, thinned = part, True
+                limit = min(group.shape[0], MAX_VARIATES)
+                if self.channel_limit:
+                    limit = min(limit, int(rng.integers(1, self.channel_limit + 1)))
+                channels = np.sort(rng.choice(group.shape[0], limit, replace=False))
+                rate, phase, mean = 1, 0, False
+                if self.augment and not thinned:
+                    full = self.context + self.horizon
+                    rate, phase, mean = draw_coarsening(rng, self.augment, group.shape[1], full)
+                points = (group.shape[1] - phase) // rate
+                length = min(points, self.context + self.horizon)
+                start = int(rng.integers(points - length + 1))
+                window = coarse_points(group, channels, start, start + length, rate, phase, mean)
+                if self.augment:
+                    window = apply_augment(window, rng, self.augment)
             cut = length - self.horizon
             if np.isfinite(window[:, :cut]).any() and np.isfinite(window[:, cut:]).any():
                 history = np.full((len(channels), self.context), np.nan, dtype="float32")

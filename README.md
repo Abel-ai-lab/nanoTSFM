@@ -52,6 +52,7 @@ The [rules](docs/rules.md) have the details.
 | 3 | $0.6121 \pm 0.0036$ | GEP-L (500k series) with 4x the training steps (20,000) | 2026-11-17 | [2026-11-17_sahil-saahir](records/2026-11-17_sahil-saahir/) | [@sapai5](https://github.com/sapai5), [@Saahir16](https://github.com/Saahir16) |
 | 4 | $0.5811 \pm 0.0010$ | source_power 1.5, sign-flip and downsampling augmentation, flip-symmetric nonnegative forecasts | 2026-11-20 | [2026-11-20_anannay-josh](records/2026-11-20_anannay-josh/) | [@Anannay16](https://github.com/Anannay16), [@JoshWright22](https://github.com/JoshWright22) |
 | 5 | $0.5605 \pm 0.0017$ | Record 4 with record 3's data and longer training - GEP-L, source_power 1, 40,000 steps | 2026-11-21 | [2026-11-21_shira-manas](records/2026-11-21_shira-manas/) | [@swisnie2](https://github.com/swisnie2), [@manas-tripathi27](https://github.com/manas-tripathi27) |
+| 6 | $0.5325 \pm 0.0009$ | One 13M model on GEP-L, more augmentations of real windows, polyphase views and heads, phase tokens and forecast views | 2026-11-22 | [2026-11-22_anannay-josh](records/2026-11-22_anannay-josh/) | [@Anannay16](https://github.com/Anannay16), [@JoshWright22](https://github.com/JoshWright22) |
 
 [![Each record's GIFT-Eval relative CRPS against its relative MASE][chart]][site]
 
