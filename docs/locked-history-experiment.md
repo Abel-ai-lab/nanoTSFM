@@ -5,6 +5,9 @@ and integrates its long-history inference into nanoTSFM's forecast interface. It
 checkpoint for every scale and view. The GIFT task manifest, evaluator and scorer retain their
 upstream versions.
 
+The [wide-phase experiment](wide-phase-locked-experiment.md) extends the training stride
+coverage while using the same locked-history forecast interface.
+
 ## Training
 
 The candidate starts from random weights, samples GEP-L at revision
